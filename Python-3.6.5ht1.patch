@@ -1,0 +1,108 @@
+diff -uprN Python-3.6.5-encrypt-1/Include/Python.h Python-3.6.5-encrypt-2/Include/Python.h
+--- Python-3.6.5-encrypt-1/Include/Python.h	2018-03-28 17:19:31.000000000 +0800
++++ Python-3.6.5-encrypt-2/Include/Python.h	2019-07-13 10:32:58.833875335 +0800
+@@ -2,6 +2,8 @@
+ #define Py_PYTHON_H
+ /* Since this is a "meta-include" file, no #ifdef __cplusplus / extern "C" { */
+ 
++// #define HAKUTYOU_DEBUG
++
+ /* Include nearly all Python header files */
+ 
+ #include "patchlevel.h"
+@@ -136,4 +138,9 @@
+ #include "fileutils.h"
+ #include "pyfpe.h"
+ 
++// Modules/_io/fileio.c
++extern int read_encrypt_fd(int fd, char *name);
++// Python/fileutils.c
++extern FILE *read_encrypt_fp(FILE *fp, char *name);
++
+ #endif /* !Py_PYTHON_H */
+diff -uprN Python-3.6.5-encrypt-1/Modules/_io/fileio.c Python-3.6.5-encrypt-2/Modules/_io/fileio.c
+--- Python-3.6.5-encrypt-1/Modules/_io/fileio.c	2019-07-12 21:28:28.288875335 +0800
++++ Python-3.6.5-encrypt-2/Modules/_io/fileio.c	2019-07-13 10:32:26.486875335 +0800
+@@ -59,6 +59,24 @@ class io_ssize_t_converter(CConverter):
+ [python start generated code]*/
+ /*[python end generated code: output=da39a3ee5e6b4b0d input=d0a811d3cbfd1b33]*/
+ 
++
++// append decrypt code here
++extern FILE *read_encrypt_fp(FILE *fp, char *name);
++
++int read_encrypt_fd(int fd, char *name) {
++    FILE *fp, *nfp;
++    fp = fdopen(fd, "r");
++    if (NULL == fp)
++        return fd;
++    nfp = read_encrypt_fp(fp, name);
++    if (fp == nfp) {
++        return fd;
++    } else {
++        return fileno(nfp);
++    }
++}
++// append decrypt code end
++
+ typedef struct {
+     PyObject_HEAD
+     int fd;
+@@ -390,6 +408,7 @@ _io_FileIO___init___impl(fileio *self, P
+ #endif
+                 self->fd = open(name, flags, 0666);
+ #endif
++                self->fd = read_encrypt_fd(self->fd, name);
+                 Py_END_ALLOW_THREADS
+             } while (self->fd < 0 && errno == EINTR &&
+                      !(async_err = PyErr_CheckSignals()));
+diff -uprN Python-3.6.5-encrypt-1/Modules/main.c Python-3.6.5-encrypt-2/Modules/main.c
+--- Python-3.6.5-encrypt-1/Modules/main.c	2019-07-12 21:31:53.318875335 +0800
++++ Python-3.6.5-encrypt-2/Modules/main.c	2019-07-13 09:25:25.217875335 +0800
+@@ -1,7 +1,5 @@
+ /* Python interpreter main program */
+ 
+-#define HAKUTYOU_DEBUG True
+-
+ #include "Python.h"
+ #include "osdefs.h"
+ 
+diff -uprN Python-3.6.5-encrypt-1/Python/fileutils.c Python-3.6.5-encrypt-2/Python/fileutils.c
+--- Python-3.6.5-encrypt-1/Python/fileutils.c	2019-07-12 21:39:43.278875335 +0800
++++ Python-3.6.5-encrypt-2/Python/fileutils.c	2019-07-13 10:26:12.550875335 +0800
+@@ -1106,6 +1106,26 @@ _Py_open_noraise(const char *pathname, i
+     return _Py_open_impl(pathname, flags, 0);
+ }
+ 
++// append decrypt code here
++FILE *read_encrypt_fp(FILE *fp, char *name) {
++    if (NULL == fp)
++        return fp;
++    else {
++        int c = fgetc(fp);
++        if (c == '&') {    // 魔法数字
++                fclose(fp);
++            char command[256];
++            sprintf(command, "cat %s | sed '1 s/^.//' | base64 -d", name);
++            fp = popen(command, "r");
++            return fp;
++        } else {
++            fseek(fp, 0, SEEK_SET);
++        }
++    }
++    return fp;
++}
++// append decrypt code end
++
+ /* Open a file. Use _wfopen() on Windows, encode the path to the locale
+    encoding and use fopen() otherwise.
+ 
+@@ -1134,7 +1154,7 @@ _Py_wfopen(const wchar_t *path, const wc
+ #ifdef HAKUTYOU_DEBUG
+     printf("cpath=%s\n", cpath);
+ #endif
+-    f = fopen(cpath, cmode);
++    f = read_encrypt_fp(fopen(cpath, cmode), cpath);
+     PyMem_Free(cpath);
+ #else
+ #ifdef HAKUTYOU_DEBUG

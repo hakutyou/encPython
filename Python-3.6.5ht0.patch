@@ -1,0 +1,395 @@
+diff -uprN Python-3.6.5/Modules/_io/fileio.c Python-3.6.5-encrypt-1/Modules/_io/fileio.c
+--- Python-3.6.5/Modules/_io/fileio.c	2018-03-28 17:19:31.000000000 +0800
++++ Python-3.6.5-encrypt-1/Modules/_io/fileio.c	2019-07-12 21:28:28.288875335 +0800
+@@ -385,6 +385,9 @@ _io_FileIO___init___impl(fileio *self, P
+ #ifdef MS_WINDOWS
+                 self->fd = _wopen(widename, flags, 0666);
+ #else
++#ifdef HAKUTYOU_DEBUG
++                printf("name=%s\n", name);
++#endif
+                 self->fd = open(name, flags, 0666);
+ #endif
+                 Py_END_ALLOW_THREADS
+diff -uprN Python-3.6.5/Modules/_testcapimodule.c Python-3.6.5-encrypt-1/Modules/_testcapimodule.c
+--- Python-3.6.5/Modules/_testcapimodule.c	2018-03-28 17:19:31.000000000 +0800
++++ Python-3.6.5-encrypt-1/Modules/_testcapimodule.c	2019-07-12 21:27:45.556875335 +0800
+@@ -3739,6 +3739,9 @@ pymarshal_write_long_to_file(PyObject* s
+                           &value, &filename, &version))
+         return NULL;
+ 
++#ifdef HAKUTYOU_DEBUG
++    printf("filename\%s\n", filename);
++#endif
+     fp = fopen(filename, "wb");
+     if (fp == NULL) {
+         PyErr_SetFromErrno(PyExc_OSError);
+@@ -3765,6 +3768,9 @@ pymarshal_write_object_to_file(PyObject*
+                           &obj, &filename, &version))
+         return NULL;
+ 
++#ifdef HAKUTYOU_DEBUG
++    printf("filename\%s\n", filename);
++#endif
+     fp = fopen(filename, "wb");
+     if (fp == NULL) {
+         PyErr_SetFromErrno(PyExc_OSError);
+@@ -3790,6 +3796,9 @@ pymarshal_read_short_from_file(PyObject*
+     if (!PyArg_ParseTuple(args, "s:pymarshal_read_short_from_file", &filename))
+         return NULL;
+ 
++#ifdef HAKUTYOU_DEBUG
++    printf("filename\%s\n", filename);
++#endif
+     fp = fopen(filename, "rb");
+     if (fp == NULL) {
+         PyErr_SetFromErrno(PyExc_OSError);
+@@ -3815,6 +3824,9 @@ pymarshal_read_long_from_file(PyObject*
+     if (!PyArg_ParseTuple(args, "s:pymarshal_read_long_from_file", &filename))
+         return NULL;
+ 
++#ifdef HAKUTYOU_DEBUG
++    printf("filename\%s\n", filename);
++#endif
+     fp = fopen(filename, "rb");
+     if (fp == NULL) {
+         PyErr_SetFromErrno(PyExc_OSError);
+@@ -3841,6 +3853,9 @@ pymarshal_read_last_object_from_file(PyO
+     if (!PyArg_ParseTuple(args, "s:pymarshal_read_last_object_from_file", &filename))
+         return NULL;
+ 
++#ifdef HAKUTYOU_DEBUG
++    printf("filename\%s\n", filename);
++#endif
+     fp = fopen(filename, "rb");
+     if (fp == NULL) {
+         PyErr_SetFromErrno(PyExc_OSError);
+@@ -3865,6 +3880,9 @@ pymarshal_read_object_from_file(PyObject
+     if (!PyArg_ParseTuple(args, "s:pymarshal_read_object_from_file", &filename))
+         return NULL;
+ 
++#ifdef HAKUTYOU_DEBUG
++    printf("filename\%s\n", filename);
++#endif
+     fp = fopen(filename, "rb");
+     if (fp == NULL) {
+         PyErr_SetFromErrno(PyExc_OSError);
+diff -uprN Python-3.6.5/Modules/getpath.c Python-3.6.5-encrypt-1/Modules/getpath.c
+--- Python-3.6.5/Modules/getpath.c	2018-03-28 17:19:31.000000000 +0800
++++ Python-3.6.5-encrypt-1/Modules/getpath.c	2019-07-12 21:30:02.360875335 +0800
+@@ -404,6 +404,9 @@ search_for_exec_prefix(wchar_t *argv0_pa
+     exec_prefix[MAXPATHLEN] = L'\0';
+     joinpath(exec_prefix, L"pybuilddir.txt");
+     if (isfile(exec_prefix)) {
++#ifdef HAKUTYOU_DEBUG
++        printf("[407]\n");
++#endif
+         FILE *f = _Py_wfopen(exec_prefix, L"rb");
+         if (f == NULL)
+             errno = 0;
+@@ -643,12 +646,18 @@ calculate_path(void)
+         wcscpy(tmpbuffer, argv0_path);
+ 
+         joinpath(tmpbuffer, env_cfg);
++#ifdef HAKUTYOU_DEBUG
++        printf("[647]\n");
++#endif
+         env_file = _Py_wfopen(tmpbuffer, L"r");
+         if (env_file == NULL) {
+             errno = 0;
+             reduce(tmpbuffer);
+             reduce(tmpbuffer);
+             joinpath(tmpbuffer, env_cfg);
++#ifdef HAKUTYOU_DEBUG
++            printf("[654]\n");
++#endif
+             env_file = _Py_wfopen(tmpbuffer, L"r");
+             if (env_file == NULL) {
+                 errno = 0;
+diff -uprN Python-3.6.5/Modules/main.c Python-3.6.5-encrypt-1/Modules/main.c
+--- Python-3.6.5/Modules/main.c	2018-03-28 17:19:31.000000000 +0800
++++ Python-3.6.5-encrypt-1/Modules/main.c	2019-07-12 21:31:53.318875335 +0800
+@@ -1,5 +1,7 @@
+ /* Python interpreter main program */
+ 
++#define HAKUTYOU_DEBUG True
++
+ #include "Python.h"
+ #include "osdefs.h"
+ 
+@@ -132,6 +134,9 @@ static void RunStartupFile(PyCompilerFla
+ {
+     char *startup = Py_GETENV("PYTHONSTARTUP");
+     if (startup != NULL && startup[0] != '\0') {
++#ifdef HAKUTYOU_DEBUG
++        printf("[135]\n");
++#endif
+         FILE *fp = _Py_fopen(startup, "r");
+         if (fp != NULL) {
+             (void) PyRun_SimpleFileExFlags(fp, startup, 0, cf);
+@@ -401,6 +406,8 @@ Py_Main(int argc, wchar_t **argv)
+     PySys_ResetWarnOptions();
+     _PyOS_ResetGetOpt();
+ 
++    // force not generate .pyc file
++    Py_DontWriteBytecodeFlag++;
+     while ((c = _PyOS_GetOpt(argc, argv, PROGRAM_OPTS)) != EOF) {
+         if (c == 'c') {
+             size_t len;
+@@ -533,7 +540,7 @@ Py_Main(int argc, wchar_t **argv)
+         return usage(0, argv[0]);
+ 
+     if (version) {
+-        printf("Python %s\n", version >= 2 ? Py_GetVersion() : PY_VERSION);
++        printf("Python %s(魔改版)\nby hakutyou<siratori@qq.com>\n", version >= 2 ? Py_GetVersion() : PY_VERSION);
+         return 0;
+     }
+ 
+@@ -766,6 +773,9 @@ Py_Main(int argc, wchar_t **argv)
+         }
+ 
+         if (sts==-1 && filename != NULL) {
++#ifdef HAKUTYOU_DEBUG
++            printf("[770]\n");
++#endif
+             fp = _Py_wfopen(filename, L"r");
+             if (fp == NULL) {
+                 char *cfilename_buffer;
+diff -uprN Python-3.6.5/Modules/zipimport.c Python-3.6.5-encrypt-1/Modules/zipimport.c
+--- Python-3.6.5/Modules/zipimport.c	2018-03-28 17:19:31.000000000 +0800
++++ Python-3.6.5-encrypt-1/Modules/zipimport.c	2019-07-12 21:33:03.021875335 +0800
+@@ -905,6 +905,9 @@ read_directory(PyObject *archive)
+     int bootstrap;
+     const char *errmsg = NULL;
+ 
++#ifdef HAKUTYOU_DEBUG
++    printf("[908]\n");
++#endif
+     fp = _Py_fopen_obj(archive, "rb");
+     if (fp == NULL) {
+         if (PyErr_ExceptionMatches(PyExc_OSError)) {
+@@ -1150,6 +1153,9 @@ get_data(PyObject *archive, PyObject *to
+         return NULL;
+     }
+ 
++#ifdef HAKUTYOU_DEBUG
++    printf("[1154]\n");
++#endif
+     fp = _Py_fopen_obj(archive, "rb");
+     if (!fp) {
+         return NULL;
+diff -uprN Python-3.6.5/Parser/pgenmain.c Python-3.6.5-encrypt-1/Parser/pgenmain.c
+--- Python-3.6.5/Parser/pgenmain.c	2018-03-28 17:19:31.000000000 +0800
++++ Python-3.6.5-encrypt-1/Parser/pgenmain.c	2019-07-12 21:34:08.627875335 +0800
+@@ -62,6 +62,9 @@ main(int argc, char **argv)
+     graminit_h = argv[2];
+     graminit_c = argv[3];
+     g = getgrammar(filename);
++#ifdef HAKUTYOU_DEBUG
++    printf("fopen:%s\n", graminit_c);
++#endif
+     fp = fopen(graminit_c, "w");
+     if (fp == NULL) {
+         perror(graminit_c);
+@@ -71,6 +74,9 @@ main(int argc, char **argv)
+         printf("Writing %s ...\n", graminit_c);
+     printgrammar(g, fp);
+     fclose(fp);
++#ifdef HAKUTYOU_DEBUG
++    printf("fopen:%s\n", graminit_h);
++#endif
+     fp = fopen(graminit_h, "w");
+     if (fp == NULL) {
+         perror(graminit_h);
+@@ -93,6 +99,9 @@ getgrammar(const char *filename)
+     grammar *g0, *g;
+     perrdetail err;
+ 
++#ifdef HAKUTYOU_DEBUG
++    printf("fopen:%s\n", filename);
++#endif
+     fp = fopen(filename, "r");
+     if (fp == NULL) {
+         perror(filename);
+diff -uprN Python-3.6.5/Programs/_freeze_importlib.c Python-3.6.5-encrypt-1/Programs/_freeze_importlib.c
+--- Python-3.6.5/Programs/_freeze_importlib.c	2018-03-28 17:19:31.000000000 +0800
++++ Python-3.6.5-encrypt-1/Programs/_freeze_importlib.c	2019-07-12 21:35:21.664875335 +0800
+@@ -49,6 +49,9 @@ main(int argc, char *argv[])
+     }
+     inpath = argv[1];
+     outpath = argv[2];
++#ifdef HAKUTYOU_DEBUG
++    printf("inpath=%s\n", inpath);
++#endif
+     infile = fopen(inpath, "rb");
+     if (infile == NULL) {
+         fprintf(stderr, "cannot open '%s' for reading\n", inpath);
+@@ -107,6 +110,9 @@ main(int argc, char *argv[])
+ 
+     /* Open the file in text mode. The hg checkout should be using the eol extension,
+        which in turn should cause the EOL style match the C library's text mode */
++#ifdef HAKUTYOU_DEBUG
++    printf("outpath=%s\n", outpath);
++#endif
+     outfile = fopen(outpath, "w");
+     if (outfile == NULL) {
+         fprintf(stderr, "cannot open '%s' for writing\n", outpath);
+diff -uprN Python-3.6.5/Python/errors.c Python-3.6.5-encrypt-1/Python/errors.c
+--- Python-3.6.5/Python/errors.c	2018-03-28 17:19:31.000000000 +0800
++++ Python-3.6.5-encrypt-1/Python/errors.c	2019-07-12 21:35:59.016875335 +0800
+@@ -1173,6 +1173,9 @@ PyErr_ProgramText(const char *filename,
+     FILE *fp;
+     if (filename == NULL || *filename == '\0' || lineno <= 0)
+         return NULL;
++#ifdef HAKUTYOU_DEBUG
++    printf("[1176]\n");
++#endif
+     fp = _Py_fopen(filename, "r" PY_STDIOTEXTMODE);
+     return err_programtext(fp, lineno);
+ }
+@@ -1183,6 +1186,9 @@ PyErr_ProgramTextObject(PyObject *filena
+     FILE *fp;
+     if (filename == NULL || lineno <= 0)
+         return NULL;
++#ifdef HAKUTYOU_DEBUG
++    printf("[1187]\n");
++#endif
+     fp = _Py_fopen_obj(filename, "r" PY_STDIOTEXTMODE);
+     if (fp == NULL) {
+         PyErr_Clear();
+diff -uprN Python-3.6.5/Python/fileutils.c Python-3.6.5-encrypt-1/Python/fileutils.c
+--- Python-3.6.5/Python/fileutils.c	2018-03-28 17:19:31.000000000 +0800
++++ Python-3.6.5-encrypt-1/Python/fileutils.c	2019-07-12 21:39:43.278875335 +0800
+@@ -1035,6 +1035,9 @@ _Py_open_impl(const char *pathname, int
+     if (gil_held) {
+         do {
+             Py_BEGIN_ALLOW_THREADS
++#ifdef HAKUTYOU_DEBUG
++            printf("open:%s\n", pathname);
++#endif
+             fd = open(pathname, flags);
+             Py_END_ALLOW_THREADS
+         } while (fd < 0
+@@ -1047,6 +1050,9 @@ _Py_open_impl(const char *pathname, int
+         }
+     }
+     else {
++#ifdef HAKUTYOU_DEBUG
++        printf("open:%s\n", pathname);
++#endif
+         fd = open(pathname, flags);
+         if (fd < 0)
+             return -1;
+@@ -1079,6 +1085,9 @@ _Py_open(const char *pathname, int flags
+     /* _Py_open() must be called with the GIL held. */
+     assert(PyGILState_Check());
+ #endif
++#ifdef HAKUTYOU_DEBUG
++    printf("pathname=%s\n", pathname);
++#endif
+     return _Py_open_impl(pathname, flags, 1);
+ }
+ 
+@@ -1091,6 +1100,9 @@ _Py_open(const char *pathname, int flags
+ int
+ _Py_open_noraise(const char *pathname, int flags)
+ {
++#ifdef HAKUTYOU_DEBUG
++    printf("pathname=%s\n", pathname);
++#endif
+     return _Py_open_impl(pathname, flags, 0);
+ }
+ 
+@@ -1103,6 +1115,9 @@ _Py_open_noraise(const char *pathname, i
+ FILE *
+ _Py_wfopen(const wchar_t *path, const wchar_t *mode)
+ {
++#ifdef HAKUTYOU_DEBUG
++    printf("wopen_obj\n");
++#endif
+     FILE *f;
+ #ifndef MS_WINDOWS
+     char *cpath;
+@@ -1116,9 +1131,15 @@ _Py_wfopen(const wchar_t *path, const wc
+     cpath = Py_EncodeLocale(path, NULL);
+     if (cpath == NULL)
+         return NULL;
++#ifdef HAKUTYOU_DEBUG
++    printf("cpath=%s\n", cpath);
++#endif
+     f = fopen(cpath, cmode);
+     PyMem_Free(cpath);
+ #else
++#ifdef HAKUTYOU_DEBUG
++    printf("wpath=%ls\n", path);
++#endif
+     f = _wfopen(path, mode);
+ #endif
+     if (f == NULL)
+@@ -1138,6 +1159,10 @@ _Py_wfopen(const wchar_t *path, const wc
+ FILE*
+ _Py_fopen(const char *pathname, const char *mode)
+ {
++#ifdef HAKUTYOU_DEBUG
++    printf("fopen\n");
++    printf("pathname=%s\n", pathname);
++#endif
+     FILE *f = fopen(pathname, mode);
+     if (f == NULL)
+         return NULL;
+@@ -1164,6 +1189,9 @@ _Py_fopen(const char *pathname, const ch
+ FILE*
+ _Py_fopen_obj(PyObject *path, const char *mode)
+ {
++#ifdef HAKUTYOU_DEBUG
++    printf("fopen_obj\n");
++#endif
+     FILE *f;
+     int async_err = 0;
+ #ifdef MS_WINDOWS
+@@ -1194,6 +1222,9 @@ _Py_fopen_obj(PyObject *path, const char
+ 
+     do {
+         Py_BEGIN_ALLOW_THREADS
++#ifdef HAKUTYOU_DEBUG
++        printf("wpath=%ls\n", wpath);
++#endif
+         f = _wfopen(wpath, wmode);
+         Py_END_ALLOW_THREADS
+     } while (f == NULL
+@@ -1212,6 +1243,9 @@ _Py_fopen_obj(PyObject *path, const char
+ 
+     do {
+         Py_BEGIN_ALLOW_THREADS
++#ifdef HAKUTYOU_DEBUG
++        printf("path_bytes=%s\n", path_bytes);
++#endif
+         f = fopen(path_bytes, mode);
+         Py_END_ALLOW_THREADS
+     } while (f == NULL
+diff -uprN Python-3.6.5/Python/import.c Python-3.6.5-encrypt-1/Python/import.c
+--- Python-3.6.5/Python/import.c	2018-03-28 17:19:31.000000000 +0800
++++ Python-3.6.5-encrypt-1/Python/import.c	2019-07-12 21:40:27.597875335 +0800
+@@ -1969,6 +1969,9 @@ _imp_create_dynamic_impl(PyObject *modul
+     }
+ 
+     if (file != NULL) {
++#ifdef HAKUTYOU_DEBUG
++        printf("[1972]\n");
++#endif
+         fp = _Py_fopen_obj(path, "r");
+         if (fp == NULL) {
+             Py_DECREF(name);
+diff -uprN Python-3.6.5/Python/pythonrun.c Python-3.6.5-encrypt-1/Python/pythonrun.c
+--- Python-3.6.5/Python/pythonrun.c	2018-03-28 17:19:31.000000000 +0800
++++ Python-3.6.5-encrypt-1/Python/pythonrun.c	2019-07-12 21:40:49.096875335 +0800
+@@ -396,6 +396,9 @@ PyRun_SimpleFileExFlags(FILE *fp, const
+         /* Try to run a pyc file. First, re-open in binary */
+         if (closeit)
+             fclose(fp);
++#ifdef HAKUTYOU_DEBUG
++        printf("[399]\n");
++#endif
+         if ((pyc_fp = _Py_fopen(filename, "rb")) == NULL) {
+             fprintf(stderr, "python: Can't reopen .pyc file\n");
+             goto done;

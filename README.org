@@ -1,0 +1,30 @@
+#+TITLE: Python 加密
+#+AUTHOR: 白鳥鵠
+#+DATE: 2019-07-13
+
+* Quich Start
+#+BEGIN_SRC bash
+$ wget https://www.python.org/ftp/python/3.6.5/Python-3.6.5.tgz
+$ tar xf Python-3.6.5.tgz
+$ cd Python-3.6.5/
+$ patch -p1 < ../Python-3.6.5ht0.patch
+$ patch -p1 < ../Python-3.6.5ht1.patch
+#+END_SRC bash
+
+Script 目录下为加/解密脚本
+
+* 补丁说明
+** Python-3.6.5ht2.patch
+支持 aes256 加密, 魔法数字为 ~*~
+
+** Python-3.6.5ht1.patch
+使用 base64 加密, 文件前有 ~&~ 字符表示接下来是 base64 编码内容
+
+** Python-3.6.5ht0.patch
+Include/Python.h
+#+BEGIN_SRC c
+#define HAKUTYOU_DEBUG
+#+END_SRC
+
+开启 DEBUG 模式
+
