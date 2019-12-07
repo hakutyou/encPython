@@ -2,7 +2,7 @@
 #+AUTHOR: 白鳥鵠
 #+DATE: 2019-07-13
 
-* Quich Start
+* Quick Start
 #+BEGIN_SRC bash
 $ wget https://www.python.org/ftp/python/3.6.5/Python-3.6.5.tgz
 $ tar xf Python-3.6.5.tgz
