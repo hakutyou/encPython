@@ -1,0 +1,281 @@
+diff -uprN Python-3.8.0/Include/Python.h Python-3.8.0-enc/Include/Python.h
+--- Python-3.8.0/Include/Python.h	2019-12-07 14:30:18.302251600 +0800
++++ Python-3.8.0-enc/Include/Python.h	2019-12-09 14:27:21.298859800 +0800
+@@ -1,9 +1,11 @@
++// #define HAKUTYOU_DEBUG
++#define GPG_PASSWD "123"
++
+ #ifndef Py_PYTHON_H
+ #define Py_PYTHON_H
+ /* Since this is a "meta-include" file, no #ifdef __cplusplus / extern "C" { */
+ 
+ /* Include nearly all Python header files */
+-#define HAKUTYOU_DEBUG True
+ 
+ #include "patchlevel.h"
+ #include "pyconfig.h"
+@@ -158,4 +160,16 @@
+ #include "pyfpe.h"
+ #include "tracemalloc.h"
+ 
++#ifndef MS_WINDOWS
++// Modules/_io/fileio.c
++int read_encrypt_fd(const char *name, int flags);
++// Python/fileutils.c
++extern FILE *read_encrypt_fp_1(const wchar_t *name, const char *mode);
++#else
++int read_encrypt_fd(const wchar_t *name, int flags);
++extern FILE *read_encrypt_fp_1(const wchar_t *name, const wchar_t *mode);
++#endif
++
++
++
+ #endif /* !Py_PYTHON_H */
+diff -uprN Python-3.8.0/Modules/_io/fileio.c Python-3.8.0-enc/Modules/_io/fileio.c
+--- Python-3.8.0/Modules/_io/fileio.c	2019-12-07 11:09:11.592625700 +0800
++++ Python-3.8.0-enc/Modules/_io/fileio.c	2019-12-09 14:29:29.107221200 +0800
+@@ -379,15 +379,23 @@ _io_FileIO___init___impl(fileio *self, P
+             do {
+                 Py_BEGIN_ALLOW_THREADS
+ #ifdef MS_WINDOWS
+-                self->fd = _wopen(widename, flags, 0666);
+ #ifdef HAKUTYOU_DEBUG
+-                printf("widename=%s\n", widename);
++                printf("widename=%ws\n", widename);
+ #endif
++                // self->fd = _wopen(widename, flags, 0666);
++                // 解密
++                self->fd = read_encrypt_fd(widename, flags);
++                // char buffer[201];
++                // read(self->fd, buffer, 200);
++                // printf("buffer=%s\n", buffer);
++                // self->fd = read_encrypt_fd(widename, flags);
+ #else
+ #ifdef HAKUTYOU_DEBUG
+                 printf("name=%s\n", name);
+ #endif
+-                self->fd = open(name, flags, 0666);
++                // self->fd = open(name, flags, 0666);
++                // 解密
++                self->fd = read_encrypt_fd(name, flags);
+ #endif
+                 Py_END_ALLOW_THREADS
+             } while (self->fd < 0 && errno == EINTR &&
+@@ -1236,3 +1244,32 @@ PyTypeObject PyFileIO_Type = {
+     0,                                          /* tp_version_tag */
+     0,                                          /* tp_finalize */
+ };
++
++
++// append decrypt code here
++#ifndef MS_WINDOWS
++int read_encrypt_fd(const char *name, int flags) {
++#else
++int read_encrypt_fd(const wchar_t *name, int flags) {
++#endif
++    FILE *fp = _wfopen(name, L"r");
++    if (NULL == fp) { // 如果打不开就随他去
++      return -1;
++    }
++    int c = fgetc(fp);
++    fclose(fp);
++
++    if (c == '*') {
++        char command[256];
++// cat test.py | gpg --symmetric --batch --yes --passphrase '123' | sed '1 s/^\(.\)/*\1/' > test_gpg.py
++        sprintf(command, "cat %ws | sed '1 s/^.//' | gpg --decrypt --batch --yes --passphrase '%s' 2> NUL", name, GPG_PASSWD);
++        // sprintf(command, "bash -c \"cat '%ws' | sed '1 s/^.//' | base64 -d\"", name);
++        fp = _popen(command, "rt");
++        fgetc(fp);
++        int nfd = _fileno(fp);
++        return nfd;
++    }
++
++    return _wopen(name, flags, 0666);
++}
++// append decrypt code end
+diff -uprN Python-3.8.0/Modules/main.c Python-3.8.0-enc/Modules/main.c
+--- Python-3.8.0/Modules/main.c	2019-12-07 11:09:11.614538200 +0800
++++ Python-3.8.0-enc/Modules/main.c	2019-12-09 12:11:06.273738800 +0800
+@@ -1,7 +1,5 @@
+ /* Python interpreter main program */
+ 
+-#define HAKUTYOU_DEBUG True
+-
+ #include "Python.h"
+ #include "pycore_initconfig.h"
+ #include "pycore_pylifecycle.h"
+@@ -206,7 +204,7 @@ pymain_header(const PyConfig *config)
+         return;
+     }
+ 
+-    fprintf(stderr, "Python %s\nmodified by hakutyou<siratori@qq.com>\n", Py_GetVersion(), Py_GetPlatform());
++    fprintf(stderr, "Python %s - %s\nmodified by hakutyou<siratori@qq.com>\n", Py_GetVersion(), Py_GetPlatform());
+     if (config->site_import) {
+         fprintf(stderr, "%s\n", COPYRIGHT);
+     }
+@@ -325,7 +323,7 @@ pymain_run_file(PyConfig *config, PyComp
+ #ifdef HAKUTYOU_DEBUG
+     printf("[328]\n");
+ #endif
+-    FILE *fp = _Py_wfopen(filename, L"rb");
++    FILE *fp =  _Py_wfopen(filename, L"rb");
+     if (fp == NULL) {
+         char *cfilename_buffer;
+         const char *cfilename;
+diff -uprN Python-3.8.0/Python/fileutils.c Python-3.8.0-enc/Python/fileutils.c
+--- Python-3.8.0/Python/fileutils.c	2019-12-07 11:09:11.651439100 +0800
++++ Python-3.8.0-enc/Python/fileutils.c	2019-12-09 14:29:52.676199800 +0800
+@@ -1258,6 +1258,9 @@ _Py_set_inheritable_async_safe(int fd, i
+ static int
+ _Py_open_impl(const char *pathname, int flags, int gil_held)
+ {
++#ifdef HAKUTYOU_DEBUG
++    printf("_Py_open_impl\n");
++#endif
+     int fd;
+     int async_err = 0;
+ #ifndef MS_WINDOWS
+@@ -1320,6 +1323,9 @@ _Py_open_impl(const char *pathname, int
+ int
+ _Py_open(const char *pathname, int flags)
+ {
++#ifdef HAKUTYOU_DEBUG
++    printf("_Py_open\n");
++#endif
+     /* _Py_open() must be called with the GIL held. */
+     assert(PyGILState_Check());
+     return _Py_open_impl(pathname, flags, 1);
+@@ -1346,6 +1352,9 @@ _Py_open_noraise(const char *pathname, i
+ FILE *
+ _Py_wfopen(const wchar_t *path, const wchar_t *mode)
+ {
++#ifdef HAKUTYOU_DEBUG
++    printf("_Py_wfopen\n");
++#endif
+     FILE *f;
+     if (PySys_Audit("open", "uui", path, mode, 0) < 0) {
+         return NULL;
+@@ -1367,17 +1376,24 @@ _Py_wfopen(const wchar_t *path, const wc
+ #ifdef HAKUTYOU_DEBUG
+     printf("_Py_wfopen[1370], cpath=%s\n", cpath);
+ #endif
+-    f = fopen(cpath, cmode);
++    f = read_encrypt_fp_1(cpath, cmode);
+     PyMem_RawFree(cpath);
+ #else
+ #ifdef HAKUTYOU_DEBUG
+-    printf("_Py_wfopen[1376], path=%s\n", path);
++    printf("_Py_wfopen[1376], path=%ws\n", path);
+ #endif
+-    f = _wfopen(path, mode);
++    f = read_encrypt_fp_1(path, mode);
++#endif
++    if (f == NULL) {
++#ifdef HAKUTYOU_DEBUG
++        printf("died[1379]\n");
+ #endif
+-    if (f == NULL)
+         return NULL;
++    }
+     if (make_non_inheritable(fileno(f)) < 0) {
++#ifdef HAKUTYOU_DEBUG
++        printf("died[1383]\n");
++#endif
+         fclose(f);
+         return NULL;
+     }
+@@ -1392,6 +1408,9 @@ _Py_wfopen(const wchar_t *path, const wc
+ FILE*
+ _Py_fopen(const char *pathname, const char *mode)
+ {
++#ifdef HAKUTYOU_DEBUG
++    printf("_Py_fopen\n");
++#endif
+     if (PySys_Audit("open", "ssi", pathname, mode, 0) < 0) {
+         return NULL;
+     }
+@@ -1425,6 +1444,9 @@ _Py_fopen(const char *pathname, const ch
+ FILE*
+ _Py_fopen_obj(PyObject *path, const char *mode)
+ {
++#ifdef HAKUTYOU_DEBUG
++    printf("_Py_fopen_obj\n");
++#endif
+     FILE *f;
+     int async_err = 0;
+ #ifdef MS_WINDOWS
+@@ -1457,7 +1479,7 @@ _Py_fopen_obj(PyObject *path, const char
+     do {
+         Py_BEGIN_ALLOW_THREADS
+ #ifdef HAKUTYOU_DEBUG
+-        printf("[1462], wpath=%s\n", wpath);
++        printf("[1462], wpath=%ws\n", wpath);
+ #endif
+         f = _wfopen(wpath, wmode);
+         Py_END_ALLOW_THREADS
+@@ -1520,6 +1542,9 @@ _Py_fopen_obj(PyObject *path, const char
+ Py_ssize_t
+ _Py_read(int fd, void *buf, size_t count)
+ {
++#ifdef HAKUTYOU_DEBUG
++    printf("_Py_read\n");
++#endif
+     Py_ssize_t n;
+     int err;
+     int async_err = 0;
+@@ -1992,3 +2017,24 @@ done:
+     PyMem_Free(oldloc);
+     return res;
+ }
++
++// append decrypt code here
++FILE *read_encrypt_fp_1(const wchar_t *name, const wchar_t *mode) {
++  FILE *fp = _wfopen(name, L"r");
++  if (NULL == fp) { // 如果打不开就随他去
++    return fp;
++  }
++  int c = fgetc(fp);
++  fclose(fp);
++
++  if (c == '*') {    // 魔法数字
++    char command[256];
++    sprintf(command, "cat %ws | sed '1s/^.//' | gpg --decrypt --batch --yes --passphrase '%s' 2> NUL", name, GPG_PASSWD);
++    fp = _popen(command, L"r");
++    // MUST read a char in Windows here!
++    // So it should add a character before encrypt
++    fgetc(fp);
++    return fp;
++  }
++  return _wfopen(name, L"r");
++}
+diff -uprN Python-3.8.0/Python/pythonrun.c Python-3.8.0-enc/Python/pythonrun.c
+--- Python-3.8.0/Python/pythonrun.c	2019-12-07 11:09:11.671386100 +0800
++++ Python-3.8.0-enc/Python/pythonrun.c	2019-12-09 14:16:40.369623600 +0800
+@@ -82,8 +82,9 @@ PyRun_AnyFileExFlags(FILE *fp, const cha
+             fclose(fp);
+         return err;
+     }
+-    else
++    else {
+         return PyRun_SimpleFileExFlags(fp, filename, closeit, flags);
++    }
+ }
+ 
+ int
+diff -uprN Python-3.8.0/Python/traceback.c Python-3.8.0-enc/Python/traceback.c
+--- Python-3.8.0/Python/traceback.c	2019-10-14 21:34:47.000000000 +0800
++++ Python-3.8.0-enc/Python/traceback.c	2019-12-09 11:01:42.139905300 +0800
+@@ -596,6 +596,7 @@ tb_printinternal(PyTracebackObject *tb,
+ int
+ PyTraceBack_Print(PyObject *v, PyObject *f)
+ {
++// Ht TODO: Need Comment Last
+     int err;
+     PyObject *limitv;
+     long limit = PyTraceBack_LIMIT;
+@@ -919,4 +920,3 @@ _Py_DumpTracebackThreads(int fd, PyInter
+ 
+     return NULL;
+ }
+-

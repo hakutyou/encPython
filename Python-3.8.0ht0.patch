@@ -1,0 +1,374 @@
+diff -uprN Python-3.8.0/Modules/_io/fileio.c Python-3.8.0-enc/Modules/_io/fileio.c
+--- Python-3.8.0/Modules/_io/fileio.c	2019-10-14 21:34:47.000000000 +0800
++++ Python-3.8.0-enc/Modules/_io/fileio.c	2019-12-07 10:32:53.206833600 +0800
+@@ -380,7 +380,13 @@ _io_FileIO___init___impl(fileio *self, P
+                 Py_BEGIN_ALLOW_THREADS
+ #ifdef MS_WINDOWS
+                 self->fd = _wopen(widename, flags, 0666);
++#ifdef HAKUTYOU_DEBUG
++                printf("widename=%s\n", widename);
++#endif
+ #else
++#ifdef HAKUTYOU_DEBUG
++                printf("name=%s\n", name);
++#endif
+                 self->fd = open(name, flags, 0666);
+ #endif
+                 Py_END_ALLOW_THREADS
+diff -uprN Python-3.8.0/Modules/_testcapimodule.c Python-3.8.0-enc/Modules/_testcapimodule.c
+--- Python-3.8.0/Modules/_testcapimodule.c	2019-10-14 21:34:47.000000000 +0800
++++ Python-3.8.0-enc/Modules/_testcapimodule.c	2019-12-07 10:36:23.508545500 +0800
+@@ -4127,6 +4127,9 @@ pymarshal_write_long_to_file(PyObject* s
+                           &value, &filename, &version))
+         return NULL;
+ 
++#ifdef HAKUTYOU_DEBUG
++    printf("filename\%s\n", filename);
++#endif
+     fp = fopen(filename, "wb");
+     if (fp == NULL) {
+         PyErr_SetFromErrno(PyExc_OSError);
+@@ -4153,6 +4156,9 @@ pymarshal_write_object_to_file(PyObject*
+                           &obj, &filename, &version))
+         return NULL;
+ 
++#ifdef HAKUTYOU_DEBUG
++    printf("filename\%s\n", filename);
++#endif
+     fp = fopen(filename, "wb");
+     if (fp == NULL) {
+         PyErr_SetFromErrno(PyExc_OSError);
+@@ -4178,6 +4184,9 @@ pymarshal_read_short_from_file(PyObject*
+     if (!PyArg_ParseTuple(args, "s:pymarshal_read_short_from_file", &filename))
+         return NULL;
+ 
++#ifdef HAKUTYOU_DEBUG
++    printf("filename\%s\n", filename);
++#endif
+     fp = fopen(filename, "rb");
+     if (fp == NULL) {
+         PyErr_SetFromErrno(PyExc_OSError);
+@@ -4203,6 +4212,9 @@ pymarshal_read_long_from_file(PyObject*
+     if (!PyArg_ParseTuple(args, "s:pymarshal_read_long_from_file", &filename))
+         return NULL;
+ 
++#ifdef HAKUTYOU_DEBUG
++    printf("filename\%s\n", filename);
++#endif
+     fp = fopen(filename, "rb");
+     if (fp == NULL) {
+         PyErr_SetFromErrno(PyExc_OSError);
+@@ -4229,6 +4241,9 @@ pymarshal_read_last_object_from_file(PyO
+     if (!PyArg_ParseTuple(args, "s:pymarshal_read_last_object_from_file", &filename))
+         return NULL;
+ 
++#ifdef HAKUTYOU_DEBUG
++    printf("filename\%s\n", filename);
++#endif
+     fp = fopen(filename, "rb");
+     if (fp == NULL) {
+         PyErr_SetFromErrno(PyExc_OSError);
+@@ -4253,6 +4268,9 @@ pymarshal_read_object_from_file(PyObject
+     if (!PyArg_ParseTuple(args, "s:pymarshal_read_object_from_file", &filename))
+         return NULL;
+ 
++#ifdef HAKUTYOU_DEBUG
++    printf("filename\%s\n", filename);
++#endif
+     fp = fopen(filename, "rb");
+     if (fp == NULL) {
+         PyErr_SetFromErrno(PyExc_OSError);
+diff -uprN Python-3.8.0/Modules/getpath.c Python-3.8.0-enc/Modules/getpath.c
+--- Python-3.8.0/Modules/getpath.c	2019-10-14 21:34:47.000000000 +0800
++++ Python-3.8.0-enc/Modules/getpath.c	2019-12-07 10:38:04.985561800 +0800
+@@ -577,6 +577,9 @@ calculate_pybuilddir(const wchar_t *argv
+         return _PyStatus_OK();
+     }
+ 
++#ifdef HAKUTYOU_DEBUG
++        printf("[583]\n");
++#endif
+     FILE *fp = _Py_wfopen(filename, L"rb");
+     if (fp == NULL) {
+         errno = 0;
+@@ -1013,6 +1016,10 @@ calculate_read_pyenv(PyCalculatePath *ca
+     if (_PyStatus_EXCEPTION(status)) {
+         return status;
+     }
++
++#ifdef HAKUTYOU_DEBUG
++    printf("[1023]\n");
++#endif
+     env_file = _Py_wfopen(filename, L"r");
+     if (env_file == NULL) {
+         errno = 0;
+@@ -1025,6 +1032,9 @@ calculate_read_pyenv(PyCalculatePath *ca
+             return status;
+         }
+ 
++#ifdef HAKUTYOU_DEBUG
++        printf("[1038]\n");
++#endif
+         env_file = _Py_wfopen(filename, L"r");
+         if (env_file == NULL) {
+             errno = 0;
+diff -uprN Python-3.8.0/Modules/main.c Python-3.8.0-enc/Modules/main.c
+--- Python-3.8.0/Modules/main.c	2019-10-14 21:34:47.000000000 +0800
++++ Python-3.8.0-enc/Modules/main.c	2019-12-07 10:46:08.110730600 +0800
+@@ -1,5 +1,7 @@
+ /* Python interpreter main program */
+ 
++#define HAKUTYOU_DEBUG True
++
+ #include "Python.h"
+ #include "pycore_initconfig.h"
+ #include "pycore_pylifecycle.h"
+@@ -204,7 +206,7 @@ pymain_header(const PyConfig *config)
+         return;
+     }
+ 
+-    fprintf(stderr, "Python %s on %s\n", Py_GetVersion(), Py_GetPlatform());
++    fprintf(stderr, "Python %s\nmodified by hakutyou<siratori@qq.com>\n", Py_GetVersion(), Py_GetPlatform());
+     if (config->site_import) {
+         fprintf(stderr, "%s\n", COPYRIGHT);
+     }
+@@ -319,6 +321,10 @@ pymain_run_file(PyConfig *config, PyComp
+     if (PySys_Audit("cpython.run_file", "u", filename) < 0) {
+         return pymain_exit_err_print();
+     }
++
++#ifdef HAKUTYOU_DEBUG
++    printf("[328]\n");
++#endif
+     FILE *fp = _Py_wfopen(filename, L"rb");
+     if (fp == NULL) {
+         char *cfilename_buffer;
+@@ -395,6 +401,9 @@ pymain_run_startup(PyConfig *config, PyC
+         return pymain_err_print(exitcode);
+     }
+ 
++#ifdef HAKUTYOU_DEBUG
++    printf("[407]\n");
++#endif
+     FILE *fp = _Py_fopen(startup, "r");
+     if (fp == NULL) {
+         int save_errno = errno;
+diff -uprN Python-3.8.0/PC/getpathp.c Python-3.8.0-enc/PC/getpathp.c
+--- Python-3.8.0/PC/getpathp.c	2019-10-14 21:34:47.000000000 +0800
++++ Python-3.8.0-enc/PC/getpathp.c	2019-12-07 11:06:52.071740400 +0800
+@@ -599,6 +599,9 @@ read_pth_file(_PyPathConfig *pathconfig,
+     wchar_t *wline = NULL;
+     FILE *sp_file;
+ 
++#ifdef HAKUTYOU_DEBUG
++    printf("[603]\n");
++#endif
+     sp_file = _Py_wfopen(path, L"r");
+     if (sp_file == NULL) {
+         return _PyStatus_OK();
+@@ -762,6 +765,9 @@ calculate_pyvenv_file(PyCalculatePath *c
+     wcscpy_s(filename, MAXPATHLEN+1, argv0_path);
+     join(filename, env_cfg);
+ 
++#ifdef HAKUTYOU_DEBUG
++    printf("[771]");
++#endif
+     FILE *env_file = _Py_wfopen(filename, L"r");
+     if (env_file == NULL) {
+         errno = 0;
+@@ -771,6 +777,9 @@ calculate_pyvenv_file(PyCalculatePath *c
+         reduce(filename);
+         join(filename, env_cfg);
+ 
++#ifdef HAKUTYOU_DEBUG
++        printf("[783]");
++#endif
+         env_file = _Py_wfopen(filename, L"r");
+         if (env_file == NULL) {
+             errno = 0;
+diff -uprN Python-3.8.0/PC/launcher.c Python-3.8.0-enc/PC/launcher.c
+--- Python-3.8.0/PC/launcher.c	2019-10-14 21:34:47.000000000 +0800
++++ Python-3.8.0-enc/PC/launcher.c	2019-12-07 11:05:19.701801400 +0800
+@@ -1277,6 +1277,10 @@ maybe_handle_shebang(wchar_t ** argv, wc
+  * argv[0] might be a filename with a shebang.
+  */
+     FILE * fp;
++
++#ifdef HAKUTYOU_DEBUG
++    printf("[maybe_handle_shebang]\n");
++#endif
+     errno_t rc = _wfopen_s(&fp, *argv, L"rb");
+     char buffer[BUFSIZE];
+     wchar_t shebang_line[BUFSIZE + 1];
+@@ -1830,7 +1834,7 @@ process(int argc, wchar_t ** argv)
+ 
+ #if !defined(VENV_REDIRECT)
+     /* bpo-35811: The __PYVENV_LAUNCHER__ variable is used to
+-     * override sys.executable and locate the original prefix path. 
++     * override sys.executable and locate the original prefix path.
+      * However, if it is silently inherited by a non-venv Python
+      * process, that process will believe it is running in the venv
+      * still. This is the only place where *we* can clear it (that is,
+@@ -1877,6 +1881,10 @@ process(int argc, wchar_t ** argv)
+         char *start;
+         DWORD len, cch, cch_actual;
+         size_t cb;
++
++#ifdef HAKUTYOU_DEBUG
++        printf("[1888, venv_cfg_path=%s]\n", venv_cfg_path);
++#endif
+         if (_wfopen_s(&f, venv_cfg_path, L"r")) {
+             error(RC_BAD_VENV_CFG, L"Cannot read '%ls'", venv_cfg_path);
+         }
+diff -uprN Python-3.8.0/Programs/_freeze_importlib.c Python-3.8.0-enc/Programs/_freeze_importlib.c
+--- Python-3.8.0/Programs/_freeze_importlib.c	2019-10-14 21:34:47.000000000 +0800
++++ Python-3.8.0-enc/Programs/_freeze_importlib.c	2019-12-07 11:03:34.618747000 +0800
+@@ -51,6 +51,10 @@ main(int argc, char *argv[])
+     name = argv[1];
+     inpath = argv[2];
+     outpath = argv[3];
++
++#ifdef HAKUTYOU_DEBUG
++    printf("[58]\n");
++#endif
+     infile = fopen(inpath, "rb");
+     if (infile == NULL) {
+         fprintf(stderr, "cannot open '%s' for reading\n", inpath);
+@@ -117,6 +121,11 @@ main(int argc, char *argv[])
+ 
+     /* Open the file in text mode. The hg checkout should be using the eol extension,
+        which in turn should cause the EOL style match the C library's text mode */
++
++
++#ifdef HAKUTYOU_DEBUG
++    printf("[129]\n");
++#endif
+     outfile = fopen(outpath, "w");
+     if (outfile == NULL) {
+         fprintf(stderr, "cannot open '%s' for writing\n", outpath);
+diff -uprN Python-3.8.0/Programs/_testembed.c Python-3.8.0-enc/Programs/_testembed.c
+--- Python-3.8.0/Programs/_testembed.c	2019-10-14 21:34:47.000000000 +0800
++++ Python-3.8.0-enc/Programs/_testembed.c	2019-12-07 10:44:17.281250900 +0800
+@@ -573,7 +573,7 @@ static int test_init_from_config(void)
+     /* FIXME: test parser_debug */
+ 
+     putenv("PYTHONDONTWRITEBYTECODE=");
+-    Py_DontWriteBytecodeFlag = 0;
++    Py_DontWriteBytecodeFlag = 1;
+     config.write_bytecode = 0;
+ 
+     Py_QuietFlag = 0;
+diff -uprN Python-3.8.0/Python/errors.c Python-3.8.0-enc/Python/errors.c
+--- Python-3.8.0/Python/errors.c	2019-10-14 21:34:47.000000000 +0800
++++ Python-3.8.0-enc/Python/errors.c	2019-12-07 10:58:17.942935600 +0800
+@@ -1578,6 +1578,10 @@ PyErr_ProgramText(const char *filename,
+         return NULL;
+     }
+     PyThreadState *tstate = _PyThreadState_GET();
++
++#ifdef HAKUTYOU_DEBUG
++    printf("[1585]\n");
++#endif
+     fp = _Py_fopen(filename, "r" PY_STDIOTEXTMODE);
+     return err_programtext(tstate, fp, lineno);
+ }
+@@ -1590,6 +1594,9 @@ PyErr_ProgramTextObject(PyObject *filena
+     }
+ 
+     PyThreadState *tstate = _PyThreadState_GET();
++#ifdef HAKUTYOU_DEBUG
++    printf("[1600]\n");
++#endif
+     FILE *fp = _Py_fopen_obj(filename, "r" PY_STDIOTEXTMODE);
+     if (fp == NULL) {
+         _PyErr_Clear(tstate);
+diff -uprN Python-3.8.0/Python/fileutils.c Python-3.8.0-enc/Python/fileutils.c
+--- Python-3.8.0/Python/fileutils.c	2019-10-14 21:34:47.000000000 +0800
++++ Python-3.8.0-enc/Python/fileutils.c	2019-12-07 10:57:30.534344300 +0800
+@@ -1363,9 +1363,16 @@ _Py_wfopen(const wchar_t *path, const wc
+     if (cpath == NULL) {
+         return NULL;
+     }
++
++#ifdef HAKUTYOU_DEBUG
++    printf("_Py_wfopen[1370], cpath=%s\n", cpath);
++#endif
+     f = fopen(cpath, cmode);
+     PyMem_RawFree(cpath);
+ #else
++#ifdef HAKUTYOU_DEBUG
++    printf("_Py_wfopen[1376], path=%s\n", path);
++#endif
+     f = _wfopen(path, mode);
+ #endif
+     if (f == NULL)
+@@ -1389,6 +1396,9 @@ _Py_fopen(const char *pathname, const ch
+         return NULL;
+     }
+ 
++#ifdef HAKUTYOU_DEBUG
++    printf("[1402], pathname=%s\n", pathname);
++#endif
+     FILE *f = fopen(pathname, mode);
+     if (f == NULL)
+         return NULL;
+@@ -1446,6 +1456,9 @@ _Py_fopen_obj(PyObject *path, const char
+ 
+     do {
+         Py_BEGIN_ALLOW_THREADS
++#ifdef HAKUTYOU_DEBUG
++        printf("[1462], wpath=%s\n", wpath);
++#endif
+         f = _wfopen(wpath, wmode);
+         Py_END_ALLOW_THREADS
+     } while (f == NULL
+@@ -1466,6 +1479,9 @@ _Py_fopen_obj(PyObject *path, const char
+ 
+     do {
+         Py_BEGIN_ALLOW_THREADS
++#ifdef HAKUTYOU_DEBUG
++        printf("[1485], path_bytes=%s\n", path_bytes);
++#endif
+         f = fopen(path_bytes, mode);
+         Py_END_ALLOW_THREADS
+     } while (f == NULL
+diff -uprN Python-3.8.0/Python/import.c Python-3.8.0-enc/Python/import.c
+--- Python-3.8.0/Python/import.c	2019-10-14 21:34:47.000000000 +0800
++++ Python-3.8.0-enc/Python/import.c	2019-12-07 10:49:31.779719800 +0800
+@@ -2207,6 +2207,10 @@ _imp_create_dynamic_impl(PyObject *modul
+     }
+ 
+     if (file != NULL) {
++
++#ifdef HAKUTYOU_DEBUG
++        printf("[2214]\n");
++#endif
+         fp = _Py_fopen_obj(path, "r");
+         if (fp == NULL) {
+             Py_DECREF(name);
+diff -uprN Python-3.8.0/Python/initconfig.c Python-3.8.0-enc/Python/initconfig.c
+--- Python-3.8.0/Python/initconfig.c	2019-10-14 21:34:47.000000000 +0800
++++ Python-3.8.0-enc/Python/initconfig.c	2019-12-07 10:43:06.203020400 +0800
+@@ -120,7 +120,7 @@ int Py_NoSiteFlag = 0; /* Suppress 'impo
+ int Py_BytesWarningFlag = 0; /* Warn on str(bytes) and str(buffer) */
+ int Py_FrozenFlag = 0; /* Needed by getpath.c */
+ int Py_IgnoreEnvironmentFlag = 0; /* e.g. PYTHONPATH, PYTHONHOME */
+-int Py_DontWriteBytecodeFlag = 0; /* Suppress writing bytecode files (*.pyc) */
++int Py_DontWriteBytecodeFlag = 1; /* Suppress writing bytecode files (*.pyc) */
+ int Py_NoUserSiteDirectory = 0; /* for -s and site.py */
+ int Py_UnbufferedStdioFlag = 0; /* Unbuffered binary std{in,out,err} */
+ int Py_HashRandomizationFlag = 0; /* for -R and PYTHONHASHSEED */
+diff -uprN Python-3.8.0/Python/pythonrun.c Python-3.8.0-enc/Python/pythonrun.c
+--- Python-3.8.0/Python/pythonrun.c	2019-10-14 21:34:47.000000000 +0800
++++ Python-3.8.0-enc/Python/pythonrun.c	2019-12-07 10:50:48.337507100 +0800
+@@ -405,6 +405,10 @@ PyRun_SimpleFileExFlags(FILE *fp, const
+         /* Try to run a pyc file. First, re-open in binary */
+         if (closeit)
+             fclose(fp);
++
++#ifdef HAKUTYOU_DEBUG
++        printf("[412]\n");
++#endif
+         if ((pyc_fp = _Py_fopen(filename, "rb")) == NULL) {
+             fprintf(stderr, "python: Can't reopen .pyc file\n");
+             goto done;

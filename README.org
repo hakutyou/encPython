@@ -28,3 +28,7 @@ Include/Python.h
 
 开启 DEBUG 模式
 
+* Note
+3.6.5 仅在 Linux 测试过
+
+3.8.0 仅在 Windows 下测试过
