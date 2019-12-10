@@ -23,17 +23,29 @@ $ buildrelease.bat
 $ PCbuild/win32/python.exe -m ensurepip
 #+END_SRC
 
-** Dependence
+*** 如何加密
 #+BEGIN_SRC bash
 # GunPG
 # 命令统一用双引号
-cat test.py | sed "1 s/^/*/" | gpg --symmetric --batch --yes --passphrase "hakutyou" | sed "1 s/^/*/" > test_gpg.py
-# sed
-# http://gnuwin32.sourceforge.net/packages/sed.htm
-# Binaries 和 Dependencies
-wget https://nchc.dl.sourceforge.net/project/gnuwin32/sed/4.2.1/sed-4.2.1-bin.zip
-wget https://nchc.dl.sourceforge.net/project/gnuwin32/sed/4.2.1/sed-4.2.1-dep.zip
+cat main.py | sed "1 s/^/*/" | gpg --symmetric --batch --yes --passphrase "izlvubpv" | sed "1 s/^/*/" > main_gpg.py
+# 除了 main.py 其他都使用下面命令加密
+cat import_file.py | gpg --symmetric --batch --yes --passphrase "izlvubpv" | sed "1 s/^/*/" > import_gpg.py
+# AES 加密后在前面加 '*' 表示
+# 未加密的文件应当避免在文件头出现这些符号
+
+# Script 目录下为加/解密脚本
 #+END_SRC
+
+*** 设置密码
+Include/Python.h
+#+BEGIN_SRC c
+#define GPG_PASSWD "hakutyou"
+#define GPG_PASSWD_LENGTH 8
+// ROTATE 最好随便找个与 LENGTH 互质的数
+#define GPG_PASSWD_ROTATE 5
+#+END_SRC
+
+开启 HAKUTYOU_DEBUG 会打印经过置换之后的密码
 
 ** Python 3.6.5
 #+BEGIN_SRC bash
@@ -45,46 +57,7 @@ $ patch -p1 < ../Python-3.6.5ht1.patch
 $ patch -p1 < ../Python-3.6.5ht2.patch
 #+END_SRC bash
 
-Script 目录下为加/解密脚本
-
-* 补丁说明
-** Python-3.7.5ht1.patch
-Include/Python.h
-#+BEGIN_SRC c
-#define GPG_PASSWD "123"
-# 设置密码
-#+END_SRC
-
-支持 aes256 加密, 魔法数字为 ~*~
-
-加密前在代码前加一个字母
-
-** Python-3.7.5ht0.patch
-Include/Python.h
-#+BEGIN_SRC c
-#define HAKUTYOU_DEBUG
-#+END_SRC
-
-#+BEGIN_EXAMPLE
-开启 DEBUG 模式
-支持 aes256 加密
-#+END_EXAMPLE
-
-** Python-3.6.5ht2.patch
-支持 aes256 加密, 魔法数字为 ~*~
-
-** Python-3.6.5ht1.patch
-使用 base64 加密, 文件前有 ~&~ 字符表示接下来是 base64 编码内容
-
-** Python-3.6.5ht0.patch
-Include/Python.h
-#+BEGIN_SRC c
-#define HAKUTYOU_DEBUG
-#+END_SRC
-
-开启 DEBUG 模式
-
 * Note
-3.6.5 仅在 Linux 测试过
+目前 3.7.5 仅在 Windows 环境下使用
 
-3.7.5 仅在 Windows 下测试过
+3.6.5 仅在 Linux 环境下使用
