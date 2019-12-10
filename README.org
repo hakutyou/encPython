@@ -20,6 +20,8 @@ $ cp amd64/python.exe python37.exe
 $ cd Tools/msi
 $ buildrelease.bat
 # 生成的 msi 在 /PCBuild/ 下
+# 安装 setuptools pip
+$ PCbuild\win32\python.exe -m ensurepip
 #+END_SRC
 
 ** Dependence
