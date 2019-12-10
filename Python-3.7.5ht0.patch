@@ -1,25 +1,35 @@
-diff -uprN Python-3.7.5/Include/Python.h Python-3.7.5-enc/Include/Python.h
+diff -uprN Python-3.7.5/Include/Python.h Python-3.7.5-enc-v0/Include/Python.h
 --- Python-3.7.5/Include/Python.h	2019-10-15 06:32:36.000000000 +0800
-+++ Python-3.7.5-enc/Include/Python.h	2019-12-10 11:55:59.617004900 +0800
-@@ -1,5 +1,9 @@
++++ Python-3.7.5-enc-v0/Include/Python.h	2019-12-10 17:30:21.914418300 +0800
+@@ -1,5 +1,19 @@
  #ifndef Py_PYTHON_H
  #define Py_PYTHON_H
 +
 +#define HAKUTYOU_DEBUG
 +#define GPG_PASSWD "hakutyou"
++#define GPG_PASSWD_LENGTH 8
++// ROTATE 最好随便找个与 LENGTH 互质的数
++#define GPG_PASSWD_ROTATE 5
++// 密码经过置换和代换 izlvubpv
++// 混淆密码，避免密码作为 strings 直接出现在代码中
++#define obfs_password(orig_input) { \
++  for(int i = 0; orig_input[i] != '\0'; i++) { \
++    orig_input[i] = GPG_PASSWD[(i * GPG_PASSWD_ROTATE) % GPG_PASSWD_LENGTH] + 1; \
++  } \
++}
 +
  /* Since this is a "meta-include" file, no #ifdef __cplusplus / extern "C" { */
  
  /* Include nearly all Python header files */
-@@ -156,4 +160,5 @@
+@@ -156,4 +170,5 @@
  #include "fileutils.h"
  #include "pyfpe.h"
  
 +
  #endif /* !Py_PYTHON_H */
-diff -uprN Python-3.7.5/Modules/_io/fileio.c Python-3.7.5-enc/Modules/_io/fileio.c
+diff -uprN Python-3.7.5/Modules/_io/fileio.c Python-3.7.5-enc-v0/Modules/_io/fileio.c
 --- Python-3.7.5/Modules/_io/fileio.c	2019-10-15 06:32:36.000000000 +0800
-+++ Python-3.7.5-enc/Modules/_io/fileio.c	2019-12-10 11:56:02.331799700 +0800
++++ Python-3.7.5-enc-v0/Modules/_io/fileio.c	2019-12-10 17:31:35.468151100 +0800
 @@ -18,6 +18,8 @@
  #include <stddef.h> /* For offsetof */
  #include "_iomodule.h"
@@ -39,10 +49,11 @@ diff -uprN Python-3.7.5/Modules/_io/fileio.c Python-3.7.5-enc/Modules/_io/fileio
  #else
                  self->fd = open(name, flags, 0666);
  #endif
-@@ -1234,3 +1237,24 @@ PyTypeObject PyFileIO_Type = {
+@@ -1234,3 +1237,27 @@ PyTypeObject PyFileIO_Type = {
      0,                                          /* tp_version_tag */
      0,                                          /* tp_finalize */
  };
++
 +
 +// append decrypt code here
 +static int read_encrypt_fd(const wchar_t *name, int flags) {
@@ -56,7 +67,9 @@ diff -uprN Python-3.7.5/Modules/_io/fileio.c Python-3.7.5-enc/Modules/_io/fileio
 +// cat test.py | gpg --symmetric --batch --yes --passphrase '123' | sed '1 s/^/*/' > test_gpg.py
 +  if (c == '*') {
 +    char command[256];
-+    sprintf(command, "dd bs=1 skip=1 if=\"%ws\" 2> NUL | gpg --decrypt --batch --yes --passphrase \"%s\" 2> NUL", name, GPG_PASSWD);
++    char gpg_passwd[] = GPG_PASSWD;
++    obfs_password(gpg_passwd);
++    sprintf(command, "dd bs=1 skip=1 if=\"%ws\" 2> NUL | gpg --decrypt --batch --yes --passphrase \"%s\" 2> NUL", name, gpg_passwd);
 +    fp = _popen(command, "rt");
 +    int nfd = _fileno(fp);
 +    return nfd;
@@ -64,9 +77,9 @@ diff -uprN Python-3.7.5/Modules/_io/fileio.c Python-3.7.5-enc/Modules/_io/fileio
 +  return _wopen(name, flags, 0666);
 +}
 +// append decrypt code end
-diff -uprN Python-3.7.5/Modules/main.c Python-3.7.5-enc/Modules/main.c
+diff -uprN Python-3.7.5/Modules/main.c Python-3.7.5-enc-v0/Modules/main.c
 --- Python-3.7.5/Modules/main.c	2019-10-15 06:32:36.000000000 +0800
-+++ Python-3.7.5-enc/Modules/main.c	2019-12-10 11:56:04.232186200 +0800
++++ Python-3.7.5-enc-v0/Modules/main.c	2019-12-10 17:29:37.497342400 +0800
 @@ -1238,7 +1238,7 @@ pymain_header(_PyMain *pymain)
          return;
      }
@@ -76,9 +89,18 @@ diff -uprN Python-3.7.5/Modules/main.c Python-3.7.5-enc/Modules/main.c
      if (!Py_NoSiteFlag) {
          fprintf(stderr, "%s\n", COPYRIGHT);
      }
-diff -uprN Python-3.7.5/Python/fileutils.c Python-3.7.5-enc/Python/fileutils.c
+@@ -1455,7 +1455,7 @@ cmdline_get_global_config(_PyCmdline *cm
+     cmdline->interactive = Py_InteractiveFlag;
+     cmdline->isolated = Py_IsolatedFlag;
+     cmdline->optimization_level = Py_OptimizeFlag;
+-    cmdline->dont_write_bytecode = Py_DontWriteBytecodeFlag;
++    cmdline->dont_write_bytecode = 1;
+     cmdline->no_user_site_directory = Py_NoUserSiteDirectory;
+     cmdline->no_site_import = Py_NoSiteFlag;
+     cmdline->use_unbuffered_io = Py_UnbufferedStdioFlag;
+diff -uprN Python-3.7.5/Python/fileutils.c Python-3.7.5-enc-v0/Python/fileutils.c
 --- Python-3.7.5/Python/fileutils.c	2019-10-15 06:32:36.000000000 +0800
-+++ Python-3.7.5-enc/Python/fileutils.c	2019-12-10 11:56:02.854512500 +0800
++++ Python-3.7.5-enc-v0/Python/fileutils.c	2019-12-10 17:30:49.311899500 +0800
 @@ -20,6 +20,8 @@ extern int winerror_to_errno(int);
  #include <fcntl.h>
  #endif /* HAVE_FCNTL_H */
@@ -98,10 +120,11 @@ diff -uprN Python-3.7.5/Python/fileutils.c Python-3.7.5-enc/Python/fileutils.c
  #endif
      if (f == NULL)
          return NULL;
-@@ -1863,3 +1866,25 @@ error:
+@@ -1863,3 +1866,33 @@ error:
      PyMem_Free(oldloc);
      return res;
  }
++
 +
 +// append decrypt code here
 +static FILE *read_encrypt_fp(const wchar_t *name, const wchar_t *mode) {
@@ -114,8 +137,14 @@ diff -uprN Python-3.7.5/Python/fileutils.c Python-3.7.5-enc/Python/fileutils.c
 +
 +  if (c == '*') {    // 魔法数字
 +    char command[256];
-+    sprintf(command, "dd bs=1 skip=1 if=\"%ws\" 2> NUL | gpg --decrypt --batch --yes --passphrase \"%s\" 2> NUL", name, GPG_PASSWD);
++    char gpg_passwd[] = GPG_PASSWD;
++    obfs_password(gpg_passwd);
++
++    sprintf(command, "dd bs=1 skip=1 if=\"%ws\" 2> NUL | gpg --decrypt --batch --yes --passphrase \"%s\" 2> NUL", name, gpg_passwd);
 +    fp = _popen(command, "rt");
++#ifdef HAKUTYOU_DEBUG
++    printf("%s\n", command);
++#endif
 +    // MUST read a char in Windows here!
 +    // So it should add a character before encrypt
 +    fgetc(fp);
@@ -124,3 +153,4 @@ diff -uprN Python-3.7.5/Python/fileutils.c Python-3.7.5-enc/Python/fileutils.c
 +  return _wfopen(name, mode);
 +}
 +// append decrypt code end
++

@@ -11,7 +11,6 @@ $ wget https://www.python.org/ftp/python/3.7.5/Python-3.7.5.tgz
 $ tar xf Python-3.7.5.tgz
 $ cd Python-3.7.5/
 $ patch -p1 < ../Python-3.7.5ht0.patch
-$ patch -p1 < ../Python-3.7.5ht1.patch
 # 仅 build
 $ cd PCbuild
 $ build.bat -c Release -p x64
@@ -21,7 +20,7 @@ $ cd Tools/msi
 $ buildrelease.bat
 # 生成的 msi 在 /PCBuild/ 下
 # 安装 setuptools pip
-$ PCbuild\win32\python.exe -m ensurepip
+$ PCbuild/win32/python.exe -m ensurepip
 #+END_SRC
 
 ** Dependence
@@ -66,7 +65,10 @@ Include/Python.h
 #define HAKUTYOU_DEBUG
 #+END_SRC
 
+#+BEGIN_EXAMPLE
 开启 DEBUG 模式
+支持 aes256 加密
+#+END_EXAMPLE
 
 ** Python-3.6.5ht2.patch
 支持 aes256 加密, 魔法数字为 ~*~
