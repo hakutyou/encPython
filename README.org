@@ -3,17 +3,69 @@
 #+DATE: 2019-07-13
 
 * Quick Start
+** Python 3.7.5
+Windows 环境需要先安装 [[https://www.gpg4win.org/][GPG]]、[[http://gnuwin32.sourceforge.net/packages/coreutils.htm][coreutils]]
+
+#+BEGIN_SRC bash
+$ wget https://www.python.org/ftp/python/3.7.5/Python-3.7.5.tgz
+$ tar xf Python-3.7.5.tgz
+$ cd Python-3.7.5/
+$ patch -p1 < ../Python-3.7.5ht0.patch
+$ patch -p1 < ../Python-3.7.5ht1.patch
+# 仅 build
+$ cd PCbuild
+$ build.bat -c Release -p x64
+$ cp amd64/python.exe python37.exe
+# 生成 msi 文件
+$ cd Tools/msi
+$ buildrelease.bat
+# 生成的 msi 在 /PCBuild/ 下
+#+END_SRC
+
+** Dependence
+#+BEGIN_SRC bash
+# GunPG
+# 密码统一用单引号，sed 命令统一用双引号
+cat test.py | sed "1 s/^/*/" | gpg --symmetric --batch --yes --passphrase '123' | sed "1 s/^/*/" > test_gpg.py
+# sed
+# http://gnuwin32.sourceforge.net/packages/sed.htm
+# Binaries 和 Dependencies
+wget https://nchc.dl.sourceforge.net/project/gnuwin32/sed/4.2.1/sed-4.2.1-bin.zip
+wget https://nchc.dl.sourceforge.net/project/gnuwin32/sed/4.2.1/sed-4.2.1-dep.zip
+#+END_SRC
+
+** Python 3.6.5
 #+BEGIN_SRC bash
 $ wget https://www.python.org/ftp/python/3.6.5/Python-3.6.5.tgz
 $ tar xf Python-3.6.5.tgz
 $ cd Python-3.6.5/
 $ patch -p1 < ../Python-3.6.5ht0.patch
 $ patch -p1 < ../Python-3.6.5ht1.patch
+$ patch -p1 < ../Python-3.6.5ht2.patch
 #+END_SRC bash
 
 Script 目录下为加/解密脚本
 
 * 补丁说明
+** Python-3.7.5ht1.patch
+Include/Python.h
+#+BEGIN_SRC c
+#define GPG_PASSWD "123"
+# 设置密码
+#+END_SRC
+
+支持 aes256 加密, 魔法数字为 ~*~
+
+加密前在代码前加一个字母
+
+** Python-3.7.5ht0.patch
+Include/Python.h
+#+BEGIN_SRC c
+#define HAKUTYOU_DEBUG
+#+END_SRC
+
+开启 DEBUG 模式
+
 ** Python-3.6.5ht2.patch
 支持 aes256 加密, 魔法数字为 ~*~
 
@@ -31,4 +83,4 @@ Include/Python.h
 * Note
 3.6.5 仅在 Linux 测试过
 
-3.8.0 仅在 Windows 下测试过
+3.7.5 仅在 Windows 下测试过

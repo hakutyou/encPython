@@ -1,0 +1,126 @@
+diff -uprN Python-3.7.5/Include/Python.h Python-3.7.5-enc/Include/Python.h
+--- Python-3.7.5/Include/Python.h	2019-10-15 06:32:36.000000000 +0800
++++ Python-3.7.5-enc/Include/Python.h	2019-12-10 11:55:59.617004900 +0800
+@@ -1,5 +1,9 @@
+ #ifndef Py_PYTHON_H
+ #define Py_PYTHON_H
++
++#define HAKUTYOU_DEBUG
++#define GPG_PASSWD "hakutyou"
++
+ /* Since this is a "meta-include" file, no #ifdef __cplusplus / extern "C" { */
+ 
+ /* Include nearly all Python header files */
+@@ -156,4 +160,5 @@
+ #include "fileutils.h"
+ #include "pyfpe.h"
+ 
++
+ #endif /* !Py_PYTHON_H */
+diff -uprN Python-3.7.5/Modules/_io/fileio.c Python-3.7.5-enc/Modules/_io/fileio.c
+--- Python-3.7.5/Modules/_io/fileio.c	2019-10-15 06:32:36.000000000 +0800
++++ Python-3.7.5-enc/Modules/_io/fileio.c	2019-12-10 11:56:02.331799700 +0800
+@@ -18,6 +18,8 @@
+ #include <stddef.h> /* For offsetof */
+ #include "_iomodule.h"
+ 
++int read_encrypt_fd(const wchar_t *name, int flags);
++
+ /*
+  * Known likely problems:
+  *
+@@ -374,7 +376,8 @@ _io_FileIO___init___impl(fileio *self, P
+             do {
+                 Py_BEGIN_ALLOW_THREADS
+ #ifdef MS_WINDOWS
+-                self->fd = _wopen(widename, flags, 0666);
++                // self->fd = _wopen(widename, flags, 0666);
++                self->fd = read_encrypt_fd(widename, flags);
+ #else
+                 self->fd = open(name, flags, 0666);
+ #endif
+@@ -1234,3 +1237,24 @@ PyTypeObject PyFileIO_Type = {
+     0,                                          /* tp_version_tag */
+     0,                                          /* tp_finalize */
+ };
++
++// append decrypt code here
++static int read_encrypt_fd(const wchar_t *name, int flags) {
++  FILE *fp = _wfopen(name, L"r");
++  if (NULL == fp) { // 如果打不开就随他去
++    return _wopen(name, flags, 0666);
++  }
++  int c = fgetc(fp);
++  fclose(fp);
++// 加密运行
++// cat test.py | gpg --symmetric --batch --yes --passphrase '123' | sed '1 s/^/*/' > test_gpg.py
++  if (c == '*') {
++    char command[256];
++    sprintf(command, "dd bs=1 skip=1 if=\"%ws\" 2> NUL | gpg --decrypt --batch --yes --passphrase \"%s\" 2> NUL", name, GPG_PASSWD);
++    fp = _popen(command, "rt");
++    int nfd = _fileno(fp);
++    return nfd;
++  }
++  return _wopen(name, flags, 0666);
++}
++// append decrypt code end
+diff -uprN Python-3.7.5/Modules/main.c Python-3.7.5-enc/Modules/main.c
+--- Python-3.7.5/Modules/main.c	2019-10-15 06:32:36.000000000 +0800
++++ Python-3.7.5-enc/Modules/main.c	2019-12-10 11:56:04.232186200 +0800
+@@ -1238,7 +1238,7 @@ pymain_header(_PyMain *pymain)
+         return;
+     }
+ 
+-    fprintf(stderr, "Python %s on %s\n", Py_GetVersion(), Py_GetPlatform());
++    fprintf(stderr, "Python %s on %s\nmodified by hakutyou<siratori@qq.com>\n", Py_GetVersion(), Py_GetPlatform());
+     if (!Py_NoSiteFlag) {
+         fprintf(stderr, "%s\n", COPYRIGHT);
+     }
+diff -uprN Python-3.7.5/Python/fileutils.c Python-3.7.5-enc/Python/fileutils.c
+--- Python-3.7.5/Python/fileutils.c	2019-10-15 06:32:36.000000000 +0800
++++ Python-3.7.5-enc/Python/fileutils.c	2019-12-10 11:56:02.854512500 +0800
+@@ -20,6 +20,8 @@ extern int winerror_to_errno(int);
+ #include <fcntl.h>
+ #endif /* HAVE_FCNTL_H */
+ 
++FILE *read_encrypt_fp(const wchar_t *name, const wchar_t *mode);
++
+ #ifdef O_CLOEXEC
+ /* Does open() support the O_CLOEXEC flag? Possible values:
+ 
+@@ -1262,7 +1264,8 @@ _Py_wfopen(const wchar_t *path, const wc
+     f = fopen(cpath, cmode);
+     PyMem_RawFree(cpath);
+ #else
+-    f = _wfopen(path, mode);
++    // f = _wfopen(path, mode);
++    f = read_encrypt_fp(path, mode);
+ #endif
+     if (f == NULL)
+         return NULL;
+@@ -1863,3 +1866,25 @@ error:
+     PyMem_Free(oldloc);
+     return res;
+ }
++
++// append decrypt code here
++static FILE *read_encrypt_fp(const wchar_t *name, const wchar_t *mode) {
++  FILE *fp = _wfopen(name, mode);
++  if (NULL == fp) { // 如果打不开就随他去
++    return fp;
++  }
++  int c = fgetc(fp);
++  fclose(fp);
++
++  if (c == '*') {    // 魔法数字
++    char command[256];
++    sprintf(command, "dd bs=1 skip=1 if=\"%ws\" 2> NUL | gpg --decrypt --batch --yes --passphrase \"%s\" 2> NUL", name, GPG_PASSWD);
++    fp = _popen(command, "rt");
++    // MUST read a char in Windows here!
++    // So it should add a character before encrypt
++    fgetc(fp);
++    return fp;
++  }
++  return _wfopen(name, mode);
++}
++// append decrypt code end
