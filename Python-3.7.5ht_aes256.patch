@@ -1,6 +1,6 @@
 diff -uprN Python-3.7.5/Include/Python.h Python-3.7.5-enc/Include/Python.h
 --- Python-3.7.5/Include/Python.h	2019-10-15 06:32:36.000000000 +0800
-+++ Python-3.7.5-enc/Include/Python.h	2019-12-13 10:56:14.013420800 +0800
++++ Python-3.7.5-enc/Include/Python.h	2019-12-16 10:47:00.173468700 +0800
 @@ -1,5 +1,20 @@
  #ifndef Py_PYTHON_H
  #define Py_PYTHON_H
@@ -28,10 +28,10 @@ diff -uprN Python-3.7.5/Include/Python.h Python-3.7.5-enc/Include/Python.h
  
 +
  #endif /* !Py_PYTHON_H */
-diff -uprN Python-3.7.5/Include/aes-256.c Python-3.7.5-enc/Include/aes-256.c
---- Python-3.7.5/Include/aes-256.c	1970-01-01 08:00:00.000000000 +0800
-+++ Python-3.7.5-enc/Include/aes-256.c	2019-12-13 10:56:15.054715600 +0800
-@@ -0,0 +1,727 @@
+diff -uprN Python-3.7.5/Include/aes_256.c Python-3.7.5-enc/Include/aes_256.c
+--- Python-3.7.5/Include/aes_256.c	1970-01-01 08:00:00.000000000 +0800
++++ Python-3.7.5-enc/Include/aes_256.c	2019-12-16 10:46:46.512289000 +0800
+@@ -0,0 +1,663 @@
 +#ifndef AES_256_C
 +#define AES_256_C
 +
@@ -45,39 +45,37 @@ diff -uprN Python-3.7.5/Include/aes-256.c Python-3.7.5-enc/Include/aes-256.c
 +/*
 + * round constants
 + */
-+static const unsigned int RCON[] =
-+{
-+		0x00000001, 0x00000002, 0x00000004, 0x00000008, 0x00000010,
-+		0x00000020, 0x00000040, 0x00000080, 0x0000001b, 0x00000036
++static const unsigned int RCON[] = {
++        0x00000001, 0x00000002, 0x00000004, 0x00000008, 0x00000010,
++        0x00000020, 0x00000040, 0x00000080, 0x0000001b, 0x00000036
 +};
 +
 +/*
 + * Sbox
 + */
-+static const unsigned char FSb[256] =
-+{
-+		0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
-+		0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
-+		0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
-+		0x04, 0xc7, 0x23, 0xc3, 0x18, 0x96, 0x05, 0x9a, 0x07, 0x12, 0x80, 0xe2, 0xeb, 0x27, 0xb2, 0x75,
-+		0x09, 0x83, 0x2c, 0x1a, 0x1b, 0x6e, 0x5a, 0xa0, 0x52, 0x3b, 0xd6, 0xb3, 0x29, 0xe3, 0x2f, 0x84,
-+		0x53, 0xd1, 0x00, 0xed, 0x20, 0xfc, 0xb1, 0x5b, 0x6a, 0xcb, 0xbe, 0x39, 0x4a, 0x4c, 0x58, 0xcf,
-+		0xd0, 0xef, 0xaa, 0xfb, 0x43, 0x4d, 0x33, 0x85, 0x45, 0xf9, 0x02, 0x7f, 0x50, 0x3c, 0x9f, 0xa8,
-+		0x51, 0xa3, 0x40, 0x8f, 0x92, 0x9d, 0x38, 0xf5, 0xbc, 0xb6, 0xda, 0x21, 0x10, 0xff, 0xf3, 0xd2,
-+		0xcd, 0x0c, 0x13, 0xec, 0x5f, 0x97, 0x44, 0x17, 0xc4, 0xa7, 0x7e, 0x3d, 0x64, 0x5d, 0x19, 0x73,
-+		0x60, 0x81, 0x4f, 0xdc, 0x22, 0x2a, 0x90, 0x88, 0x46, 0xee, 0xb8, 0x14, 0xde, 0x5e, 0x0b, 0xdb,
-+		0xe0, 0x32, 0x3a, 0x0a, 0x49, 0x06, 0x24, 0x5c, 0xc2, 0xd3, 0xac, 0x62, 0x91, 0x95, 0xe4, 0x79,
-+		0xe7, 0xc8, 0x37, 0x6d, 0x8d, 0xd5, 0x4e, 0xa9, 0x6c, 0x56, 0xf4, 0xea, 0x65, 0x7a, 0xae, 0x08,
-+		0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f, 0x4b, 0xbd, 0x8b, 0x8a,
-+		0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e, 0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e,
-+		0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
-+		0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16
++static const unsigned char FSb[256] = {
++        0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
++        0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
++        0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
++        0x04, 0xc7, 0x23, 0xc3, 0x18, 0x96, 0x05, 0x9a, 0x07, 0x12, 0x80, 0xe2, 0xeb, 0x27, 0xb2, 0x75,
++        0x09, 0x83, 0x2c, 0x1a, 0x1b, 0x6e, 0x5a, 0xa0, 0x52, 0x3b, 0xd6, 0xb3, 0x29, 0xe3, 0x2f, 0x84,
++        0x53, 0xd1, 0x00, 0xed, 0x20, 0xfc, 0xb1, 0x5b, 0x6a, 0xcb, 0xbe, 0x39, 0x4a, 0x4c, 0x58, 0xcf,
++        0xd0, 0xef, 0xaa, 0xfb, 0x43, 0x4d, 0x33, 0x85, 0x45, 0xf9, 0x02, 0x7f, 0x50, 0x3c, 0x9f, 0xa8,
++        0x51, 0xa3, 0x40, 0x8f, 0x92, 0x9d, 0x38, 0xf5, 0xbc, 0xb6, 0xda, 0x21, 0x10, 0xff, 0xf3, 0xd2,
++        0xcd, 0x0c, 0x13, 0xec, 0x5f, 0x97, 0x44, 0x17, 0xc4, 0xa7, 0x7e, 0x3d, 0x64, 0x5d, 0x19, 0x73,
++        0x60, 0x81, 0x4f, 0xdc, 0x22, 0x2a, 0x90, 0x88, 0x46, 0xee, 0xb8, 0x14, 0xde, 0x5e, 0x0b, 0xdb,
++        0xe0, 0x32, 0x3a, 0x0a, 0x49, 0x06, 0x24, 0x5c, 0xc2, 0xd3, 0xac, 0x62, 0x91, 0x95, 0xe4, 0x79,
++        0xe7, 0xc8, 0x37, 0x6d, 0x8d, 0xd5, 0x4e, 0xa9, 0x6c, 0x56, 0xf4, 0xea, 0x65, 0x7a, 0xae, 0x08,
++        0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f, 0x4b, 0xbd, 0x8b, 0x8a,
++        0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e, 0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e,
++        0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
++        0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16
 +};
++
 +/*
 + * Forward tables
 + */
 +#define FT \
-+\
 +        V(A5,63,63,C6), V(84,7C,7C,F8), V(99,77,77,EE), V(8D,7B,7B,F6), \
 +        V(0D,F2,F2,FF), V(BD,6B,6B,D6), V(B1,6F,6F,DE), V(54,C5,C5,91), \
 +        V(50,30,30,60), V(03,01,01,02), V(A9,67,67,CE), V(7D,2B,2B,56), \
@@ -161,36 +159,33 @@ diff -uprN Python-3.7.5/Include/aes-256.c Python-3.7.5-enc/Include/aes-256.c
 +
 +#undef FT
 +
-+
-+
 +/*
 + * Inverse Sboxs
 + */
 +static const unsigned char RSb[256] =
 +{
-+		0x52, 0x09, 0x6a, 0xd5, 0x30, 0x36, 0xa5, 0x38, 0xbf, 0x40, 0xa3, 0x9e, 0x81, 0xf3, 0xd7, 0xfb,
-+		0x7c, 0xe3, 0x39, 0x82, 0x9b, 0x2f, 0xff, 0x87, 0x34, 0x8e, 0x43, 0x44, 0xc4, 0xde, 0xe9, 0xcb,
-+		0x54, 0x7b, 0x94, 0x32, 0xa6, 0xc2, 0x23, 0x3d, 0xee, 0x4c, 0x95, 0x0b, 0x42, 0xfa, 0xc3, 0x4e,
-+		0x08, 0x2e, 0xa1, 0x66, 0x28, 0xd9, 0x24, 0xb2, 0x76, 0x5b, 0xa2, 0x49, 0x6d, 0x8b, 0xd1, 0x25,
-+		0x72, 0xf8, 0xf6, 0x64, 0x86, 0x68, 0x98, 0x16, 0xd4, 0xa4, 0x5c, 0xcc, 0x5d, 0x65, 0xb6, 0x92,
-+		0x6c, 0x70, 0x48, 0x50, 0xfd, 0xed, 0xb9, 0xda, 0x5e, 0x15, 0x46, 0x57, 0xa7, 0x8d, 0x9d, 0x84,
-+		0x90, 0xd8, 0xab, 0x00, 0x8c, 0xbc, 0xd3, 0x0a, 0xf7, 0xe4, 0x58, 0x05, 0xb8, 0xb3, 0x45, 0x06,
-+		0xd0, 0x2c, 0x1e, 0x8f, 0xca, 0x3f, 0x0f, 0x02, 0xc1, 0xaf, 0xbd, 0x03, 0x01, 0x13, 0x8a, 0x6b,
-+		0x3a, 0x91, 0x11, 0x41, 0x4f, 0x67, 0xdc, 0xea, 0x97, 0xf2, 0xcf, 0xce, 0xf0, 0xb4, 0xe6, 0x73,
-+		0x96, 0xac, 0x74, 0x22, 0xe7, 0xad, 0x35, 0x85, 0xe2, 0xf9, 0x37, 0xe8, 0x1c, 0x75, 0xdf, 0x6e,
-+		0x47, 0xf1, 0x1a, 0x71, 0x1d, 0x29, 0xc5, 0x89, 0x6f, 0xb7, 0x62, 0x0e, 0xaa, 0x18, 0xbe, 0x1b,
-+		0xfc, 0x56, 0x3e, 0x4b, 0xc6, 0xd2, 0x79, 0x20, 0x9a, 0xdb, 0xc0, 0xfe, 0x78, 0xcd, 0x5a, 0xf4,
-+		0x1f, 0xdd, 0xa8, 0x33, 0x88, 0x07, 0xc7, 0x31, 0xb1, 0x12, 0x10, 0x59, 0x27, 0x80, 0xec, 0x5f,
-+		0x60, 0x51, 0x7f, 0xa9, 0x19, 0xb5, 0x4a, 0x0d, 0x2d, 0xe5, 0x7a, 0x9f, 0x93, 0xc9, 0x9c, 0xef,
-+		0xa0, 0xe0, 0x3b, 0x4d, 0xae, 0x2a, 0xf5, 0xb0, 0xc8, 0xeb, 0xbb, 0x3c, 0x83, 0x53, 0x99, 0x61,
-+		0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d
++        0x52, 0x09, 0x6a, 0xd5, 0x30, 0x36, 0xa5, 0x38, 0xbf, 0x40, 0xa3, 0x9e, 0x81, 0xf3, 0xd7, 0xfb,
++        0x7c, 0xe3, 0x39, 0x82, 0x9b, 0x2f, 0xff, 0x87, 0x34, 0x8e, 0x43, 0x44, 0xc4, 0xde, 0xe9, 0xcb,
++        0x54, 0x7b, 0x94, 0x32, 0xa6, 0xc2, 0x23, 0x3d, 0xee, 0x4c, 0x95, 0x0b, 0x42, 0xfa, 0xc3, 0x4e,
++        0x08, 0x2e, 0xa1, 0x66, 0x28, 0xd9, 0x24, 0xb2, 0x76, 0x5b, 0xa2, 0x49, 0x6d, 0x8b, 0xd1, 0x25,
++        0x72, 0xf8, 0xf6, 0x64, 0x86, 0x68, 0x98, 0x16, 0xd4, 0xa4, 0x5c, 0xcc, 0x5d, 0x65, 0xb6, 0x92,
++        0x6c, 0x70, 0x48, 0x50, 0xfd, 0xed, 0xb9, 0xda, 0x5e, 0x15, 0x46, 0x57, 0xa7, 0x8d, 0x9d, 0x84,
++        0x90, 0xd8, 0xab, 0x00, 0x8c, 0xbc, 0xd3, 0x0a, 0xf7, 0xe4, 0x58, 0x05, 0xb8, 0xb3, 0x45, 0x06,
++        0xd0, 0x2c, 0x1e, 0x8f, 0xca, 0x3f, 0x0f, 0x02, 0xc1, 0xaf, 0xbd, 0x03, 0x01, 0x13, 0x8a, 0x6b,
++        0x3a, 0x91, 0x11, 0x41, 0x4f, 0x67, 0xdc, 0xea, 0x97, 0xf2, 0xcf, 0xce, 0xf0, 0xb4, 0xe6, 0x73,
++        0x96, 0xac, 0x74, 0x22, 0xe7, 0xad, 0x35, 0x85, 0xe2, 0xf9, 0x37, 0xe8, 0x1c, 0x75, 0xdf, 0x6e,
++        0x47, 0xf1, 0x1a, 0x71, 0x1d, 0x29, 0xc5, 0x89, 0x6f, 0xb7, 0x62, 0x0e, 0xaa, 0x18, 0xbe, 0x1b,
++        0xfc, 0x56, 0x3e, 0x4b, 0xc6, 0xd2, 0x79, 0x20, 0x9a, 0xdb, 0xc0, 0xfe, 0x78, 0xcd, 0x5a, 0xf4,
++        0x1f, 0xdd, 0xa8, 0x33, 0x88, 0x07, 0xc7, 0x31, 0xb1, 0x12, 0x10, 0x59, 0x27, 0x80, 0xec, 0x5f,
++        0x60, 0x51, 0x7f, 0xa9, 0x19, 0xb5, 0x4a, 0x0d, 0x2d, 0xe5, 0x7a, 0x9f, 0x93, 0xc9, 0x9c, 0xef,
++        0xa0, 0xe0, 0x3b, 0x4d, 0xae, 0x2a, 0xf5, 0xb0, 0xc8, 0xeb, 0xbb, 0x3c, 0x83, 0x53, 0x99, 0x61,
++        0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d
 +};
 +
 +/*
 + * Reverse tables
 + */
 +#define RT \
-+\
 +        V(50,A7,F4,51), V(53,65,41,7E), V(C3,A4,17,1A), V(96,5E,27,3A), \
 +        V(CB,6B,AB,3B), V(F1,45,9D,1F), V(AB,58,FA,AC), V(93,03,E3,4B), \
 +        V(55,FA,30,20), V(F6,6D,76,AD), V(91,76,CC,88), V(25,4C,02,F5), \
@@ -337,431 +332,394 @@ diff -uprN Python-3.7.5/Include/aes-256.c Python-3.7.5-enc/Include/aes-256.c
 +(b)[(i)+3] = (unsigned char)(((n) >> 24) & 0xFF);        \
 +}
 +
-+static inline void aes_key_en_schedule(const unsigned char *key,
-+	unsigned int keybits,
-+	unsigned int *RK,
-+	unsigned char* NR)
-+{
-+
-+	unsigned int i;
-+	for (i = 0; i < (keybits >> 5); i++)
-+	{
-+		GET_UINT32_LE(RK[i], key, i << 2);
-+	}
++static inline void aes_key_en_schedule(const unsigned char *key, unsigned int keybits,
++                unsigned int *RK, unsigned char* NR) {
++    unsigned int i;
++    for (i = 0; i < (keybits >> 5); i++) {
++        GET_UINT32_LE(RK[i], key, i << 2);
++    }
 +
 +
-+	switch (keybits)
-+	{
-+	case 128:
-+	{
-+		*NR = 10;
-+		break;
-+	}
-+	case 192:
-+	{
-+		*NR = 12;
-+		break;
-+	}
-+	case 256:
-+	{
-+		*NR = 14;
-+		break;
-+	}
-+	default:
-+		return;
-+	}
++    switch (keybits) {
++    case 128:
++        *NR = 10;
++        break;
++    case 192:
++        *NR = 12;
++        break;
++    case 256:
++        *NR = 14;
++        break;
++    default:
++        return;
++    }
 +
 +
-+	switch (*NR)
-+	{
-+	case 10:
-+	{
-+		for (i = 0; i < 10; i++, RK += 4)
-+		{
-+			RK[4] = RK[0] ^ RCON[i] ^
-+				((unsigned int)FSb[(RK[3] >> 8) & 0xFF]) ^
-+				((unsigned int)FSb[(RK[3] >> 16) & 0xFF] << 8) ^
-+				((unsigned int)FSb[(RK[3] >> 24) & 0xFF] << 16) ^
-+				((unsigned int)FSb[(RK[3]) & 0xFF] << 24);
++    switch (*NR) {
++    case 10:
++        for (i = 0; i < 10; i++, RK += 4) {
++            RK[4] = RK[0] ^ RCON[i] ^
++                ((unsigned int)FSb[(RK[3] >> 8) & 0xFF]) ^
++                ((unsigned int)FSb[(RK[3] >> 16) & 0xFF] << 8) ^
++                ((unsigned int)FSb[(RK[3] >> 24) & 0xFF] << 16) ^
++                ((unsigned int)FSb[(RK[3]) & 0xFF] << 24);
 +
-+			RK[5] = RK[1] ^ RK[4];
-+			RK[6] = RK[2] ^ RK[5];
-+			RK[7] = RK[3] ^ RK[6];
-+		}
-+		break;
-+	}
-+	case 12:
-+	{
-+		for (i = 0; i < 8; i++, RK += 6)
-+		{
-+			RK[6] = RK[0] ^ RCON[i] ^
-+				((unsigned int)FSb[(RK[5] >> 8) & 0xFF]) ^
-+				((unsigned int)FSb[(RK[5] >> 16) & 0xFF] << 8) ^
-+				((unsigned int)FSb[(RK[5] >> 24) & 0xFF] << 16) ^
-+				((unsigned int)FSb[(RK[5]) & 0xFF] << 24);
++            RK[5] = RK[1] ^ RK[4];
++            RK[6] = RK[2] ^ RK[5];
++            RK[7] = RK[3] ^ RK[6];
++        }
++        break;
++    case 12:
++        for (i = 0; i < 8; i++, RK += 6) {
++            RK[6] = RK[0] ^ RCON[i] ^
++                ((unsigned int)FSb[(RK[5] >> 8) & 0xFF]) ^
++                ((unsigned int)FSb[(RK[5] >> 16) & 0xFF] << 8) ^
++                ((unsigned int)FSb[(RK[5] >> 24) & 0xFF] << 16) ^
++                ((unsigned int)FSb[(RK[5]) & 0xFF] << 24);
 +
-+			RK[7] = RK[1] ^ RK[6];
-+			RK[8] = RK[2] ^ RK[7];
-+			RK[9] = RK[3] ^ RK[8];
-+			RK[10] = RK[4] ^ RK[9];
-+			RK[11] = RK[5] ^ RK[10];
-+		}
-+		break;
-+	}
-+	case 14:
-+	{
-+		for (i = 0; i < 7; i++, RK += 8)
-+		{
-+			RK[8] = RK[0] ^ RCON[i] ^
-+				((unsigned int)FSb[(RK[7] >> 8) & 0xFF]) ^
-+				((unsigned int)FSb[(RK[7] >> 16) & 0xFF] << 8) ^
-+				((unsigned int)FSb[(RK[7] >> 24) & 0xFF] << 16) ^
-+				((unsigned int)FSb[(RK[7]) & 0xFF] << 24);
++            RK[7] = RK[1] ^ RK[6];
++            RK[8] = RK[2] ^ RK[7];
++            RK[9] = RK[3] ^ RK[8];
++            RK[10] = RK[4] ^ RK[9];
++            RK[11] = RK[5] ^ RK[10];
++        }
++        break;
++    case 14:
++        for (i = 0; i < 7; i++, RK += 8) {
++            RK[8] = RK[0] ^ RCON[i] ^
++                ((unsigned int)FSb[(RK[7] >> 8) & 0xFF]) ^
++                ((unsigned int)FSb[(RK[7] >> 16) & 0xFF] << 8) ^
++                ((unsigned int)FSb[(RK[7] >> 24) & 0xFF] << 16) ^
++                ((unsigned int)FSb[(RK[7]) & 0xFF] << 24);
 +
-+			RK[9] = RK[1] ^ RK[8];
-+			RK[10] = RK[2] ^ RK[9];
-+			RK[11] = RK[3] ^ RK[10];
++            RK[9] = RK[1] ^ RK[8];
++            RK[10] = RK[2] ^ RK[9];
++            RK[11] = RK[3] ^ RK[10];
 +
-+			RK[12] = RK[4] ^
-+				((unsigned int)FSb[(RK[11]) & 0xFF]) ^
-+				((unsigned int)FSb[(RK[11] >> 8) & 0xFF] << 8) ^
-+				((unsigned int)FSb[(RK[11] >> 16) & 0xFF] << 16) ^
-+				((unsigned int)FSb[(RK[11] >> 24) & 0xFF] << 24);
++            RK[12] = RK[4] ^
++                ((unsigned int)FSb[(RK[11]) & 0xFF]) ^
++                ((unsigned int)FSb[(RK[11] >> 8) & 0xFF] << 8) ^
++                ((unsigned int)FSb[(RK[11] >> 16) & 0xFF] << 16) ^
++                ((unsigned int)FSb[(RK[11] >> 24) & 0xFF] << 24);
 +
-+			RK[13] = RK[5] ^ RK[12];
-+			RK[14] = RK[6] ^ RK[13];
-+			RK[15] = RK[7] ^ RK[14];
-+		}
-+		break;
-+	}
-+	default:
-+	{
-+		return;
-+	}
-+	}
-+	return;
++            RK[13] = RK[5] ^ RK[12];
++            RK[14] = RK[6] ^ RK[13];
++            RK[15] = RK[7] ^ RK[14];
++        }
++        break;
++    default:
++        return;
++    }
++    return;
 +}
 +
-+static inline void aes_key_de_schedule(const unsigned char *key,
-+	unsigned int keybits,
-+	unsigned int *RK,
-+	unsigned char* NR)
-+{
-+	int i, j;
-+	unsigned int* SK;
-+	unsigned int RK1[68];
++static inline void aes_key_de_schedule(const unsigned char *key, unsigned int keybits,
++                unsigned int *RK, unsigned char* NR) {
++    int i, j;
++    unsigned int* SK;
++    unsigned int RK1[68];
 +
-+	aes_key_en_schedule(key, keybits, RK1, NR);
++    aes_key_en_schedule(key, keybits, RK1, NR);
 +
-+	SK = RK1 + *NR * 4;
-+	*RK++ = *SK++;
-+	*RK++ = *SK++;
-+	*RK++ = *SK++;
-+	*RK++ = *SK++;
++    SK = RK1 + *NR * 4;
++    *RK++ = *SK++;
++    *RK++ = *SK++;
++    *RK++ = *SK++;
++    *RK++ = *SK++;
 +
-+	for (i = *NR - 1, SK -= 8; i > 0; i--, SK -= 8)
-+	{
-+		for (j = 0; j < 4; j++, SK++)
-+		{
-+			*RK++ = RT0[FSb[(*SK) & 0xFF]] ^
-+				RT1[FSb[(*SK >> 8) & 0xFF]] ^
-+				RT2[FSb[(*SK >> 16) & 0xFF]] ^
-+				RT3[FSb[(*SK >> 24) & 0xFF]];
-+		}
-+	}
++    for (i = *NR - 1, SK -= 8; i > 0; i--, SK -= 8) {
++        for (j = 0; j < 4; j++, SK++) {
++            *RK++ = RT0[FSb[(*SK) & 0xFF]] ^
++                RT1[FSb[(*SK >> 8) & 0xFF]] ^
++                RT2[FSb[(*SK >> 16) & 0xFF]] ^
++                RT3[FSb[(*SK >> 24) & 0xFF]];
++        }
++    }
 +
-+	*RK++ = *SK++;
-+	*RK++ = *SK++;
-+	*RK++ = *SK++;
-+	*RK = *SK;
++    *RK++ = *SK++;
++    *RK++ = *SK++;
++    *RK++ = *SK++;
++    *RK = *SK;
 +
 +}
 +
 +
-+static inline void aes_encrypt(const unsigned int *RK,
-+	const unsigned char* NR,
-+	const unsigned char *input,
-+	unsigned char *output)
-+{
-+	int i;
-+	unsigned int X0, X1, X2, X3, Y0, Y1, Y2, Y3;
++static inline void aes_encrypt(const unsigned int *RK, const unsigned char* NR,
++                const unsigned char *input, unsigned char *output) {
++    int i;
++    unsigned int X0, X1, X2, X3, Y0, Y1, Y2, Y3;
 +
-+	// AddRoundKey
-+	GET_UINT32_LE(X0, input, 0); X0 ^= *RK++;
-+	GET_UINT32_LE(X1, input, 4); X1 ^= *RK++;
-+	GET_UINT32_LE(X2, input, 8); X2 ^= *RK++;
-+	GET_UINT32_LE(X3, input, 12); X3 ^= *RK++;
-+	for (i = (*NR >> 1) - 1; i > 0; i--)
-+	{
-+		AES_FROUND(Y0, Y1, Y2, Y3, X0, X1, X2, X3);
-+		AES_FROUND(X0, X1, X2, X3, Y0, Y1, Y2, Y3);
-+	}
-+	AES_FROUND(Y0, Y1, Y2, Y3, X0, X1, X2, X3);
++    // AddRoundKey
++    GET_UINT32_LE(X0, input, 0); X0 ^= *RK++;
++    GET_UINT32_LE(X1, input, 4); X1 ^= *RK++;
++    GET_UINT32_LE(X2, input, 8); X2 ^= *RK++;
++    GET_UINT32_LE(X3, input, 12); X3 ^= *RK++;
++    for (i = (*NR >> 1) - 1; i > 0; i--) {
++        AES_FROUND(Y0, Y1, Y2, Y3, X0, X1, X2, X3);
++        AES_FROUND(X0, X1, X2, X3, Y0, Y1, Y2, Y3);
++    }
++    AES_FROUND(Y0, Y1, Y2, Y3, X0, X1, X2, X3);
 +
 +
-+	X0 = *RK++ ^ \
-+		((unsigned int)FSb[(Y0) & 0xFF]) ^
-+		((unsigned int)FSb[(Y1 >> 8) & 0xFF] << 8) ^
-+		((unsigned int)FSb[(Y2 >> 16) & 0xFF] << 16) ^
-+		((unsigned int)FSb[(Y3 >> 24) & 0xFF] << 24);
++    X0 = *RK++ ^ \
++        ((unsigned int)FSb[(Y0) & 0xFF]) ^
++        ((unsigned int)FSb[(Y1 >> 8) & 0xFF] << 8) ^
++        ((unsigned int)FSb[(Y2 >> 16) & 0xFF] << 16) ^
++        ((unsigned int)FSb[(Y3 >> 24) & 0xFF] << 24);
 +
-+	X1 = *RK++ ^ \
-+		((unsigned int)FSb[(Y1) & 0xFF]) ^
-+		((unsigned int)FSb[(Y2 >> 8) & 0xFF] << 8) ^
-+		((unsigned int)FSb[(Y3 >> 16) & 0xFF] << 16) ^
-+		((unsigned int)FSb[(Y0 >> 24) & 0xFF] << 24);
++    X1 = *RK++ ^ \
++        ((unsigned int)FSb[(Y1) & 0xFF]) ^
++        ((unsigned int)FSb[(Y2 >> 8) & 0xFF] << 8) ^
++        ((unsigned int)FSb[(Y3 >> 16) & 0xFF] << 16) ^
++        ((unsigned int)FSb[(Y0 >> 24) & 0xFF] << 24);
 +
-+	X2 = *RK++ ^ \
-+		((unsigned int)FSb[(Y2) & 0xFF]) ^
-+		((unsigned int)FSb[(Y3 >> 8) & 0xFF] << 8) ^
-+		((unsigned int)FSb[(Y0 >> 16) & 0xFF] << 16) ^
-+		((unsigned int)FSb[(Y1 >> 24) & 0xFF] << 24);
++    X2 = *RK++ ^ \
++        ((unsigned int)FSb[(Y2) & 0xFF]) ^
++        ((unsigned int)FSb[(Y3 >> 8) & 0xFF] << 8) ^
++        ((unsigned int)FSb[(Y0 >> 16) & 0xFF] << 16) ^
++        ((unsigned int)FSb[(Y1 >> 24) & 0xFF] << 24);
 +
-+	X3 = *RK ^ \
-+		((unsigned int)FSb[(Y3) & 0xFF]) ^
-+		((unsigned int)FSb[(Y0 >> 8) & 0xFF] << 8) ^
-+		((unsigned int)FSb[(Y1 >> 16) & 0xFF] << 16) ^
-+		((unsigned int)FSb[(Y2 >> 24) & 0xFF] << 24);
++    X3 = *RK ^ \
++        ((unsigned int)FSb[(Y3) & 0xFF]) ^
++        ((unsigned int)FSb[(Y0 >> 8) & 0xFF] << 8) ^
++        ((unsigned int)FSb[(Y1 >> 16) & 0xFF] << 16) ^
++        ((unsigned int)FSb[(Y2 >> 24) & 0xFF] << 24);
 +
-+	PUT_UINT32_LE(X0, output, 0);
-+	PUT_UINT32_LE(X1, output, 4);
-+	PUT_UINT32_LE(X2, output, 8);
-+	PUT_UINT32_LE(X3, output, 12);
++    PUT_UINT32_LE(X0, output, 0);
++    PUT_UINT32_LE(X1, output, 4);
++    PUT_UINT32_LE(X2, output, 8);
++    PUT_UINT32_LE(X3, output, 12);
++}
 +
++static inline void aes_decrypt(const unsigned int *RK, const unsigned char* NR,
++                const unsigned char *input, unsigned char *output) {
++    int i;
++    unsigned int X0, X1, X2, X3, Y0, Y1, Y2, Y3;
++    // AddRoundKey
++    GET_UINT32_LE(X0, input, 0); X0 ^= *RK++;
++    GET_UINT32_LE(X1, input, 4); X1 ^= *RK++;
++    GET_UINT32_LE(X2, input, 8); X2 ^= *RK++;
++    GET_UINT32_LE(X3, input, 12); X3 ^= *RK++;
++
++
++    // round
++    for (i = (*NR >> 1) - 1; i > 0; i--) {
++        AES_RROUND(Y0, Y1, Y2, Y3, X0, X1, X2, X3);
++        AES_RROUND(X0, X1, X2, X3, Y0, Y1, Y2, Y3);
++    }
++    AES_RROUND(Y0, Y1, Y2, Y3, X0, X1, X2, X3);
++
++    X0 = *RK++ ^ \
++        ((unsigned int)RSb[(Y0) & 0xFF]) ^
++        ((unsigned int)RSb[(Y3 >> 8) & 0xFF] << 8) ^
++        ((unsigned int)RSb[(Y2 >> 16) & 0xFF] << 16) ^
++        ((unsigned int)RSb[(Y1 >> 24) & 0xFF] << 24);
++
++    X1 = *RK++ ^ \
++        ((unsigned int)RSb[(Y1) & 0xFF]) ^
++        ((unsigned int)RSb[(Y0 >> 8) & 0xFF] << 8) ^
++        ((unsigned int)RSb[(Y3 >> 16) & 0xFF] << 16) ^
++        ((unsigned int)RSb[(Y2 >> 24) & 0xFF] << 24);
++
++    X2 = *RK++ ^ \
++        ((unsigned int)RSb[(Y2) & 0xFF]) ^
++        ((unsigned int)RSb[(Y1 >> 8) & 0xFF] << 8) ^
++        ((unsigned int)RSb[(Y0 >> 16) & 0xFF] << 16) ^
++        ((unsigned int)RSb[(Y3 >> 24) & 0xFF] << 24);
++
++    X3 = *RK ^ \
++        ((unsigned int)RSb[(Y3) & 0xFF]) ^
++        ((unsigned int)RSb[(Y2 >> 8) & 0xFF] << 8) ^
++        ((unsigned int)RSb[(Y1 >> 16) & 0xFF] << 16) ^
++        ((unsigned int)RSb[(Y0 >> 24) & 0xFF] << 24);
++
++    PUT_UINT32_LE(X0, output, 0);
++    PUT_UINT32_LE(X1, output, 4);
++    PUT_UINT32_LE(X2, output, 8);
++    PUT_UINT32_LE(X3, output, 12);
 +
 +}
 +
-+static inline void aes_decrypt(const unsigned int *RK,
-+	const unsigned char* NR,
-+	const unsigned char *input,
-+	unsigned char *output)
-+{
-+	int i;
-+	unsigned int X0, X1, X2, X3, Y0, Y1, Y2, Y3;
-+	// AddRoundKey
-+	GET_UINT32_LE(X0, input, 0); X0 ^= *RK++;
-+	GET_UINT32_LE(X1, input, 4); X1 ^= *RK++;
-+	GET_UINT32_LE(X2, input, 8); X2 ^= *RK++;
-+	GET_UINT32_LE(X3, input, 12); X3 ^= *RK++;
-+
-+
-+	// round
-+	for (i = (*NR >> 1) - 1; i > 0; i--)
-+	{
-+		AES_RROUND(Y0, Y1, Y2, Y3, X0, X1, X2, X3);
-+		AES_RROUND(X0, X1, X2, X3, Y0, Y1, Y2, Y3);
-+	}
-+	AES_RROUND(Y0, Y1, Y2, Y3, X0, X1, X2, X3);
-+
-+	X0 = *RK++ ^ \
-+		((unsigned int)RSb[(Y0) & 0xFF]) ^
-+		((unsigned int)RSb[(Y3 >> 8) & 0xFF] << 8) ^
-+		((unsigned int)RSb[(Y2 >> 16) & 0xFF] << 16) ^
-+		((unsigned int)RSb[(Y1 >> 24) & 0xFF] << 24);
-+
-+	X1 = *RK++ ^ \
-+		((unsigned int)RSb[(Y1) & 0xFF]) ^
-+		((unsigned int)RSb[(Y0 >> 8) & 0xFF] << 8) ^
-+		((unsigned int)RSb[(Y3 >> 16) & 0xFF] << 16) ^
-+		((unsigned int)RSb[(Y2 >> 24) & 0xFF] << 24);
-+
-+	X2 = *RK++ ^ \
-+		((unsigned int)RSb[(Y2) & 0xFF]) ^
-+		((unsigned int)RSb[(Y1 >> 8) & 0xFF] << 8) ^
-+		((unsigned int)RSb[(Y0 >> 16) & 0xFF] << 16) ^
-+		((unsigned int)RSb[(Y3 >> 24) & 0xFF] << 24);
-+
-+	X3 = *RK ^ \
-+		((unsigned int)RSb[(Y3) & 0xFF]) ^
-+		((unsigned int)RSb[(Y2 >> 8) & 0xFF] << 8) ^
-+		((unsigned int)RSb[(Y1 >> 16) & 0xFF] << 16) ^
-+		((unsigned int)RSb[(Y0 >> 24) & 0xFF] << 24);
-+
-+	PUT_UINT32_LE(X0, output, 0);
-+	PUT_UINT32_LE(X1, output, 4);
-+	PUT_UINT32_LE(X2, output, 8);
-+	PUT_UINT32_LE(X3, output, 12);
-+
++static inline void aes_crypt_ecb(unsigned char mode, const unsigned int *RK,
++                const unsigned char* NR, unsigned char *input, unsigned char *output) {
++    if (mode == ENCRYPT) {
++        aes_encrypt(RK, NR, (const unsigned char*)input, output);
++    } else {
++        aes_decrypt(RK, NR, (const unsigned char*)input, output);
++    }
 +}
 +
-+static inline void aes_crypt_ecb(unsigned char mode,
-+	const unsigned int *RK,
-+	const unsigned char* NR,
-+	unsigned char *input,
-+	unsigned char *output)
-+{
-+	if (mode == ENCRYPT)
-+	{
-+		aes_encrypt(RK, NR, (const unsigned char*)input, output);
-+	}
-+	else
-+	{
-+		aes_decrypt(RK, NR, (const unsigned char*)input, output);
-+	}
-+}
++static inline void aes_crypt_cbc(unsigned char mode, unsigned int length,
++                unsigned char iv[16], const unsigned int *RK, const unsigned char* NR,
++                unsigned char *input, unsigned char *output) {
++    int i;
++    unsigned char temp[16];
 +
-+static inline void aes_crypt_cbc(unsigned char mode,
-+	unsigned int length,
-+	unsigned char iv[16],
-+	const unsigned int *RK,
-+	const unsigned char* NR,
-+	unsigned char *input,
-+	unsigned char *output)
-+{
-+	int i;
-+	unsigned char temp[16];
++    if (length % 16) {
++        return;
++    }
 +
-+	if (length % 16)
-+	{
-+		return;
-+	}
++    if (mode == ENCRYPT) {
++        while (length > 0) {
++            for (i = 0; i < 16; i++)
++                output[i] = (unsigned char)(input[i] ^ iv[i]);
 +
-+	if (mode == ENCRYPT)
-+	{
-+		while (length > 0)
-+		{
-+			for (i = 0; i < 16; i++)
-+				output[i] = (unsigned char)(input[i] ^ iv[i]);
++            aes_encrypt(RK, NR, (const unsigned char*)input, output);
++            memcpy(iv, output, 16);
 +
-+			aes_encrypt(RK, NR, (const unsigned char*)input, output);
-+			memcpy(iv, output, 16);
++            input += 16;
++            output += 16;
++            length -= 16;
++        }
++    } else {
++        while (length > 0) {
++            memcpy(temp, input, 16);
++            aes_decrypt(RK, NR, (const unsigned char*)input, output);
 +
-+			input += 16;
-+			output += 16;
-+			length -= 16;
-+		}
-+	}
-+	else
-+	{
-+		while (length > 0)
-+		{
-+			memcpy(temp, input, 16);
-+			aes_decrypt(RK, NR, (const unsigned char*)input, output);
++            for (i = 0; i < 16; i++)
++                output[i] = (unsigned char)(output[i] ^ iv[i]);
 +
-+			for (i = 0; i < 16; i++)
-+				output[i] = (unsigned char)(output[i] ^ iv[i]);
++            memcpy(iv, temp, 16);
 +
-+			memcpy(iv, temp, 16);
-+
-+			input += 16;
-+			output += 16;
-+			length -= 16;
-+		}
-+	}
++            input += 16;
++            output += 16;
++            length -= 16;
++        }
++    }
 +}
 +
 +static inline int aes_encrypt_ecb(const unsigned char* Key, const unsigned char KeyLen, unsigned char* PlainContent, unsigned char* CipherContent, const int BlockCount)
 +{
-+	unsigned int roundkeys[68] = { 0 };
-+	unsigned char i = 0;
-+	unsigned char numberOfRound = 0;
++    unsigned int roundkeys[68] = { 0 };
++    unsigned char i = 0;
++    unsigned char numberOfRound = 0;
 +
 +
-+	if (KeyLen != 16)
-+	{
-+		return 0x1;
-+	}
++    if (KeyLen != 16) {
++        return 0x1;
++    }
 +
-+	// key schedule
-+	aes_key_en_schedule(Key, KeyLen * 8, roundkeys, &numberOfRound);
++    // key schedule
++    aes_key_en_schedule(Key, KeyLen * 8, roundkeys, &numberOfRound);
 +
-+	for (i = 0; i < BlockCount; i++)
-+	{
-+		aes_crypt_ecb(ENCRYPT, roundkeys, &numberOfRound, &PlainContent[i * AES_BLOCK_SIZE], &CipherContent[i * AES_BLOCK_SIZE]);
-+	}
-+	return 0;
++    for (i = 0; i < BlockCount; i++) {
++        aes_crypt_ecb(ENCRYPT, roundkeys, &numberOfRound, &PlainContent[i * AES_BLOCK_SIZE], &CipherContent[i * AES_BLOCK_SIZE]);
++    }
++    return 0;
 +}
 +
 +static inline int aes_decrypt_ecb(const unsigned char* Key, const unsigned char KeyLen, unsigned char* CipherContent, unsigned char* PlainContent, const int BlockCount)
 +{
-+	unsigned int roundkeys[68];
-+	unsigned char i = 0;
-+	unsigned char numberOfRound = 0;
++    unsigned int roundkeys[68];
++    unsigned char i = 0;
++    unsigned char numberOfRound = 0;
 +
 +
-+	if (KeyLen != 16)
-+	{
-+		return 0x1;
-+	}
-+	// key schedule
-+	aes_key_de_schedule(Key, KeyLen * 8, roundkeys, &numberOfRound);
++    if (KeyLen != 16) {
++        return 0x1;
++    }
++    // key schedule
++    aes_key_de_schedule(Key, KeyLen * 8, roundkeys, &numberOfRound);
 +
-+	for (i = 0; i < BlockCount; i++)
-+	{
-+		aes_crypt_ecb(DECRYPT, roundkeys, &numberOfRound, &CipherContent[i * AES_BLOCK_SIZE], &PlainContent[i * AES_BLOCK_SIZE]);
-+	}
-+	return 0;
++    for (i = 0; i < BlockCount; i++)
++    {
++        aes_crypt_ecb(DECRYPT, roundkeys, &numberOfRound, &CipherContent[i * AES_BLOCK_SIZE], &PlainContent[i * AES_BLOCK_SIZE]);
++    }
++    return 0;
 +}
 +
 +
 +static inline int fgets_force(unsigned char *buf, unsigned size, FILE *fp, int do_memset) {
-+	unsigned count = 0;
-+	if (do_memset) {
-+		memset(buf, 0, sizeof(char) * (size + 1));
-+	}
-+	while (!feof(fp) && (size > count)) {
-+		buf[count++] = fgetc(fp);
-+	}
++    unsigned count = 0;
++    if (do_memset) {
++        memset(buf, 0, sizeof(char) * (size + 1));
++    }
++    while (!feof(fp) && (size > count)) {
++        buf[count++] = fgetc(fp);
++    }
 +
-+	if (buf[0] == 0xff) {
-+		return 0;
-+	}
-+	return count;
++    if ((buf[0] == 0xff) && (count == 1)) {
++        return 0;
++    }
++    return count;
 +}
 +
 +static inline void fputs_force(unsigned char *buf, unsigned size, FILE *fp) {
-+	unsigned count = 0;
-+	while (size > count) {
-+    if (buf[count] == 0xff) {
-+      break;
++    unsigned count = 0;
++    while (size > count) {
++        if (buf[count] == 0xff) {
++            break;
++        }
++        fputc(buf[count++], fp);
 +    }
-+		fputc(buf[count++], fp);
-+	}
 +}
 +
 +// static inline int new_temp_file(wchar_t *tmpname, FILE *fp) {
 +static inline int new_temp_file(FILE **tmpfile, FILE *fp) {
-+  // 得到 key
-+  char gpg_passwd[] = GPG_PASSWD;
-+  obfs_password(gpg_passwd);
++    // 得到 key
++    char gpg_passwd[] = GPG_PASSWD;
++    obfs_password(gpg_passwd);
 +#ifdef HAKUTYOU_DEBUG
-+  printf("passwd=%s\n", gpg_passwd);
++    printf("passwd=%s\n", gpg_passwd);
 +#endif
 +
-+	errno_t err = tmpfile_s(tmpfile);
-+  if( err != 0 ) {
-+		return 0;
-+	}
-+//		errno_t err = _wtmpnam_s(tmpname, sizeof(wchar_t) * TMP_NAME_SIZE);
-+//	  if( err != 0 ) {
-+//	    return 0;
-+//	  }
-+//	#ifdef HAKUTYOU_DEBUG
-+//		printf("tmpname=%ws\n", tmpname);
-+//	#endif
-+//	  FILE *tmpfile = _wfopen(tmpname, L"w");
-+
-+  // 写入临时文件
-+  unsigned char cipher_r[16*CIPHER_UNIT + 1];
-+  unsigned char plain_r[16*CIPHER_UNIT + 1];
-+  cipher_r[16*CIPHER_UNIT] = plain_r[16*CIPHER_UNIT] = 0;
-+  while (fgets_force(cipher_r, 16*CIPHER_UNIT, fp, 0)) {
-+    if(aes_decrypt_ecb(gpg_passwd, 16, cipher_r, plain_r, CIPHER_UNIT) == 0x0) {
-+      // printf("%s", plain_r);
-+      fputs_force(plain_r, 16*CIPHER_UNIT, *tmpfile);
++    errno_t err = tmpfile_s(tmpfile);
++    if (err != 0) {
++        return 0;
 +    }
-+  }
++//    errno_t err = _wtmpnam_s(tmpname, sizeof(wchar_t) * TMP_NAME_SIZE);
++//    if (err != 0) {
++//        return 0;
++//    }
++//#ifdef HAKUTYOU_DEBUG
++//    printf("tmpname=%ws\n", tmpname);
++//#endif
++//    FILE *tmpfile = _wfopen(tmpname, L"w");
 +
-+	fseek(*tmpfile, 0, SEEK_SET);
-+  // fclose(tmpfile);
++    // 写入临时文件
++    unsigned char cipher_r[16*CIPHER_UNIT + 1];
++    unsigned char plain_r[16*CIPHER_UNIT + 1];
++    cipher_r[16*CIPHER_UNIT] = plain_r[16*CIPHER_UNIT] = 0;
++    while (fgets_force(cipher_r, 16*CIPHER_UNIT, fp, 0)) {
++        if (aes_decrypt_ecb(gpg_passwd, 16, cipher_r, plain_r, CIPHER_UNIT) == 0x0) {
++            // printf("%s", plain_r);
++            fputs_force(plain_r, 16*CIPHER_UNIT, *tmpfile);
++        }
++    }
 +
-+  return 1;
++    fseek(*tmpfile, 0, SEEK_SET);
++    // fclose(tmpfile);
++
++    return 1;
 +}
 +
 +#endif
++
+diff -uprN Python-3.7.5/Lib/lib2to3/tests/data/crlf.py Python-3.7.5-enc/Lib/lib2to3/tests/data/crlf.py
+--- Python-3.7.5/Lib/lib2to3/tests/data/crlf.py	2019-10-15 06:32:36.000000000 +0800
++++ Python-3.7.5-enc/Lib/lib2to3/tests/data/crlf.py	2019-12-16 10:45:53.093159700 +0800
+@@ -1,3 +1,3 @@
+-print "hi"
+-
+-print "Like bad Windows newlines?"
++print "hi"
++
++print "Like bad Windows newlines?"
+diff -uprN Python-3.7.5/Lib/test/coding20731.py Python-3.7.5-enc/Lib/test/coding20731.py
+--- Python-3.7.5/Lib/test/coding20731.py	2019-10-15 06:32:36.000000000 +0800
++++ Python-3.7.5-enc/Lib/test/coding20731.py	2019-12-16 10:45:56.162473600 +0800
+@@ -1,4 +1,4 @@
+-#coding:latin1
+-
+-
+-
++#coding:latin1
++
++
++
 diff -uprN Python-3.7.5/Modules/_io/fileio.c Python-3.7.5-enc/Modules/_io/fileio.c
 --- Python-3.7.5/Modules/_io/fileio.c	2019-10-15 06:32:36.000000000 +0800
-+++ Python-3.7.5-enc/Modules/_io/fileio.c	2019-12-13 10:54:15.110833700 +0800
++++ Python-3.7.5-enc/Modules/_io/fileio.c	2019-12-16 10:46:49.316111900 +0800
 @@ -18,6 +18,9 @@
  #include <stddef.h> /* For offsetof */
  #include "_iomodule.h"
@@ -820,7 +778,7 @@ diff -uprN Python-3.7.5/Modules/_io/fileio.c Python-3.7.5-enc/Modules/_io/fileio
 +// append decrypt code end
 diff -uprN Python-3.7.5/Modules/main.c Python-3.7.5-enc/Modules/main.c
 --- Python-3.7.5/Modules/main.c	2019-10-15 06:32:36.000000000 +0800
-+++ Python-3.7.5-enc/Modules/main.c	2019-12-10 17:36:58.164477900 +0800
++++ Python-3.7.5-enc/Modules/main.c	2019-12-16 10:46:47.315168500 +0800
 @@ -1238,7 +1238,7 @@ pymain_header(_PyMain *pymain)
          return;
      }
@@ -841,7 +799,7 @@ diff -uprN Python-3.7.5/Modules/main.c Python-3.7.5-enc/Modules/main.c
      cmdline->use_unbuffered_io = Py_UnbufferedStdioFlag;
 diff -uprN Python-3.7.5/Python/fileutils.c Python-3.7.5-enc/Python/fileutils.c
 --- Python-3.7.5/Python/fileutils.c	2019-10-15 06:32:36.000000000 +0800
-+++ Python-3.7.5-enc/Python/fileutils.c	2019-12-13 10:56:11.728057100 +0800
++++ Python-3.7.5-enc/Python/fileutils.c	2019-12-16 10:46:54.070022000 +0800
 @@ -20,6 +20,9 @@ extern int winerror_to_errno(int);
  #include <fcntl.h>
  #endif /* HAVE_FCNTL_H */

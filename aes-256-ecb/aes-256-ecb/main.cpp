@@ -800,7 +800,7 @@ void fputs_force(unsigned char *buf, unsigned size, FILE *fp) {
 
 
 #define CIPHER_UNIT 1
-// #define DO_ENCRYPT
+#define DO_ENCRYPT
 int main(int argc, char *argv[]) {
 	// const unsigned char* key = "hakutyousiratori";
 #ifdef DO_ENCRYPT
